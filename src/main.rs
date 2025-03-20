@@ -1,13 +1,14 @@
 mod args;
 mod http;
 
-use args::{cmd::CommandLineArgs, ini::IniSectionArgs};
+use args::{
+    cmd::CommandLineArgs,
+    ini::{DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION, IniFile},
+};
 use http::{RequestArgs, send_request};
 use reqwest::StatusCode;
 use std::io::{Read, stdin};
 use tokio;
-
-const DEFAULT_INI_FILE_PATH: &str = "~/.http";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -36,25 +37,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn ask_string(msg: &str) -> Result<String, Box<dyn std::error::Error>> {
+    if msg.len() > 0 {
+        eprint!("{}", msg);
+    }
+
+    let mut buffer = String::new();
+    stdin().read_line(&mut buffer)?;
+    buffer.pop(); // remove last \n
+    Ok(buffer)
+}
+
+fn create_default_profile() -> Result<(), Box<dyn std::error::Error>> {
+    eprintln!("Looks like you haven't configured the default profile yet. Let's create it now.");
+
+    let host = ask_string("host: ")?;
+    let user = ask_string("user: ")?;
+    let password = if user.len() > 0 {
+        ask_string("password: ")?
+    } else {
+        "".to_string()
+    };
+
+    println!("{host:?} | {user:?} | {password:?}");
+    Ok(())
+}
+
 fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs, Box<dyn std::error::Error>> {
     let cmd_url = cmd_args.url();
-    let ini_args = IniSectionArgs::from_file(DEFAULT_INI_FILE_PATH, cmd_args.profile().as_str());
-    let ini_host = ini_args.as_ref().and_then(|i| i.host());
-    let ini_user = ini_args.as_ref().and_then(|i| i.user());
-    let ini_password = ini_args.as_ref().and_then(|i| i.password());
-    let ini_api_key = ini_args.as_ref().and_then(|i| i.api_key());
-    let ini_insecure = ini_args.as_ref().and_then(|i| Some(i.insecure()));
-    let ini_content_type = ini_args.as_ref().and_then(|i| i.content_type());
-    let ini_ca_cert = ini_args.as_ref().and_then(|i| i.ca_cert());
+    let cmd_profile = cmd_args.profile();
 
-    let url: String = match ini_args {
+    let ini_profile = IniFile::load_profile(DEFAULT_INI_FILE_PATH, cmd_profile.as_str())?;
+    let ini_host = ini_profile.as_ref().and_then(|i| i.host());
+    let ini_user = ini_profile.as_ref().and_then(|i| i.user());
+    let ini_password = ini_profile.as_ref().and_then(|i| i.password());
+    let ini_api_key = ini_profile.as_ref().and_then(|i| i.api_key());
+    let ini_insecure = ini_profile.as_ref().and_then(|i| Some(i.insecure()));
+    let ini_content_type = ini_profile.as_ref().and_then(|i| i.content_type());
+    let ini_ca_cert = ini_profile.as_ref().and_then(|i| i.ca_cert());
+
+    let url: String = match ini_profile {
         Some(_) => {
             if cmd_url.starts_with("http") {
                 cmd_url
             } else {
                 let mut host = ini_host.unwrap_or("http://localhost".to_string());
                 host = if host.ends_with("/") {
-                    host[..(host.len() - 1)].to_string()
+                    host.pop();
+                    host
                 } else {
                     host
                 };

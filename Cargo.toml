@@ -15,4 +15,5 @@ clap = { version = "4.5.28", features = ["derive"] }
 rust-ini = "0.21.1"
 shellexpand = "3.1.0"
 zstd = "0.13.3"
+tempfile = "3.19.1"
 
