@@ -1,6 +1,8 @@
 # http
 Light-weight profile-based HTTP client enables you to write a request in natural order.
 
+![build](https://github.com/elasticsatch/http/actions/workflows/rust.yml/badge.svg)
+
 ## Setup 
 
 1. Download the binary in releases
