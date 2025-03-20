@@ -1,3 +1,16 @@
+use ini::Ini;
+use std::path::Path;
+
+const DEFAULT_SECTION: &str = "default";
+
+const INI_HOST: &str = "host";
+const INI_USER: &str = "user";
+const INI_PASSWORD: &str = "password";
+const INI_API_KEY: &str = "api_key";
+const INI_CA_CERT: &str = "ca_cert";
+const INI_INSECURE: &str = "insecure";
+const INI_CONTENT_TYPE: &str = "content_type";
+
 #[derive(Debug)]
 pub struct IniSectionArgs {
     host: Option<String>,
@@ -10,9 +23,22 @@ pub struct IniSectionArgs {
 }
 
 impl IniSectionArgs {
+    pub fn exists(file: &str, section: &str) -> bool {
+        let ini_file = shellexpand::tilde(file).to_string();
+        if !Path::new(&ini_file).exists() {
+            return false
+        }
+
+        let ini = Ini::load_from_file(ini_file).unwrap();
+        match ini.section(Some(section)) {
+            Some(_) => true,
+            None => false
+        }
+    }
+
     pub fn from_file(file: &str, section: &str) -> Option<Self> {
         let ini_file = shellexpand::tilde(file).to_string();
-        let ini = match ini::Ini::load_from_file(ini_file) {
+        let ini = match Ini::load_from_file(ini_file) {
             Ok(i) => i,
             Err(_) => return None,
         };
@@ -22,16 +48,17 @@ impl IniSectionArgs {
             None => return None,
         };
 
-        let host = section.get("host").map(|s| s.to_string());
-        let user = section.get("user").map(|s| s.to_string());
-        let password = section.get("password").map(|s| s.to_string());
-        let api_key = section.get("api_key").map(|s| s.to_string());
-        let content_type = section.get("content_type").map(|s| s.to_string());
+        let host = section.get(INI_HOST).map(|s| s.to_string());
+        let user = section.get(INI_USER).map(|s| s.to_string());
+        let password = section.get(INI_PASSWORD).map(|s| s.to_string());
+        let api_key = section.get(INI_API_KEY).map(|s| s.to_string());
+        let content_type = section.get(INI_CONTENT_TYPE).map(|s| s.to_string());
         let insecure = section
-            .get("insecure")
+            .get(INI_INSECURE)
             .map(|s| s.parse::<bool>().unwrap())
             .unwrap_or(false);
-        let ca_cert = section.get("ca_cert").map(|s| s.to_string());
+        let ca_cert = section.get(INI_CA_CERT).map(|s| s.to_string());
+
         Some(IniSectionArgs {
             host,
             user,
