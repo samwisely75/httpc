@@ -1,0 +1,18 @@
+[package]
+name = "http"
+version = "0.1.0"
+authors = ["Satoshi Iizuka"]
+description = "Run an HTTP request and print the result"
+edition = "2024"
+license = "Apache License 2.0"
+
+[dependencies]
+base64 = "0.22.1"
+flate2 = "1.1.0"
+reqwest = { version = "0.12.12", features = ["json", "rustls-tls"] }
+tokio = { version = "1.44.0", features = ["full"] }
+clap = { version = "4.5.28", features = ["derive"] }
+rust-ini = "0.21.1"
+shellexpand = "3.1.0"
+zstd = "0.13.3"
+
