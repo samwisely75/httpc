@@ -72,21 +72,3 @@ impl IniSectionArgs {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_ini_section_args() {
-        let ini = IniSectionArgs::from_file("/Users/satoshi/.www", "test");
-        assert_eq!(ini.is_some(), true);
-        let ini = ini.unwrap();
-        assert_eq!(ini.host(), Some("http://localhost".to_string()));
-        assert_eq!(ini.user(), Some("user".to_string()));
-        assert_eq!(ini.password(), Some("password".to_string()));
-        assert_eq!(ini.api_key(), Some("api_key".to_string()));
-        assert_eq!(ini.content_type(), Some("application/json".to_string()));
-        assert_eq!(ini.insecure(), true);
-        assert_eq!(ini.ca_cert(), Some("ca_cert.pem".to_string()));
-    }
-}
