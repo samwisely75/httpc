@@ -13,37 +13,37 @@ A light-weight profile-based HTTP client allows you to talk to web servers with 
 The simplest usage is to run the following command in your terminal: 
 
 ```sh
-http GET /
+wiq GET /
 ```
 
 You can `PUT` or `POST` with simple command like this:
 
 ```sh
-http PUT _cluster/settings '{
+wiq PUT _cluster/settings '{
     "persistent": {
         "cluster.routing.allocation.enabled": "primaries"
     }
 }'
 ```
 
-The commands above are using `default` profile in your `~/.http`, a configuration file that contains the base url (e.g. `https://my-remote-server:9200`), user, password, and other parameters. You can switch the connection by specifying `--profile` (or `-p`) parameter. 
+The commands above are using `default` profile in your `~/.wiq`, a configuration file that contains the base url (e.g. `https://my-remote-server:9200`), user, password, and other parameters. You can switch the connection by specifying `--profile` (or `-p`) parameter. 
 
 ```sh
-http -p my-dev-cluster GET /_cluster/settings
-http -p cust-qa-cluster GET /_cluster/settings
+wiq -p my-dev-cluster GET /_cluster/settings
+wiq -p cust-qa-cluster GET /_cluster/settings
 ```
 
-If you don't have a `default` profile, it'll prompt you to create one at the first attempt. You can run the command without configuring `~/.http` by providing a URL starts with `http://` or `https://` directly into the `URL` parameter, like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration. 
+If you don't have a `default` profile, it'll prompt you to create one at the first attempt. You can run the command without configuring `~/.wiq` by providing a URL starts with `http://` or `https://` directly into the `URL` parameter, like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration. 
 
 ```sh
-http GET https://my-local-server:9200/_cluster/health \
+wiq GET https://my-local-server:9200/_cluster/health \
     --user elastic \
     --password changeme \
     --ca-cert /path/to/ca.pem \
     --content-type application/json
 ```
 
-For all available command line options, run `http -h` or `http --help`.
+For all available command line options, run `wiq -h` or `wiq --help`.
 
 You can also pass a request body data through the standard input with specifying `--stdin` (or `-i`).
 
@@ -57,7 +57,7 @@ echo '{
         }
     }
 }' \
-| http -p dev1 -i GET my-index/_search \
+| wiq -p dev1 -i GET my-index/_search \
 | jq -r '.hits.hits[] | ._source | [ .name, .age ] | @tsv' \
 | column -t
 ```
@@ -65,12 +65,12 @@ echo '{
 ## Installation
 
 1. Download the binary in releases according to your platform.
-1. Expand .tar.gz and copy `http` to where `$PATH` is thru (e.g. `/usr/local/bin`)
-1. Run `http -h` to test it.
+1. Expand .tar.gz and copy `wiq` to where `$PATH` is thru (e.g. `/usr/local/bin`)
+1. Run `wiq -h` to test it.
 
 ## Configuration
 
-The configuration can be done through `~/.http` file, which is in a good-old INI format that contains more than one sections, consisting of more than one key-value pairs. 
+The configuration can be done through `~/.wiq` file, which is in a good-old INI format that contains more than one sections, consisting of more than one key-value pairs. 
 
 ```ini
 [default]
