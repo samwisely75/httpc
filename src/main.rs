@@ -3,7 +3,7 @@ mod http;
 
 use args::{
     cmd::CommandLineArgs,
-    ini::{DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION, IniFile},
+    ini::{DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION, IniFile, Profile},
 };
 use http::{RequestArgs, send_request};
 use reqwest::StatusCode;
@@ -58,14 +58,29 @@ fn create_default_profile() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         "".to_string()
     };
-
-    println!("{host:?} | {user:?} | {password:?}");
+    let profile = Profile::new(
+        Some(host),
+        Some(user),
+        Some(password),
+        None,
+        None,
+        false,
+        None,
+    );
+    let _ = IniFile::add_profile(DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION, &profile);
     Ok(())
 }
 
 fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs, Box<dyn std::error::Error>> {
     let cmd_url = cmd_args.url();
     let cmd_profile = cmd_args.profile();
+
+    if !IniFile::profile_exists(DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION)
+        && cmd_profile == DEFAULT_INI_SECTION
+        && !cmd_url.starts_with("http")
+    {
+        create_default_profile()?;
+    }
 
     let ini_profile = IniFile::load_profile(DEFAULT_INI_FILE_PATH, cmd_profile.as_str())?;
     let ini_host = ini_profile.as_ref().and_then(|i| i.host());

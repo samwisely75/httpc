@@ -24,6 +24,26 @@ pub struct Profile {
 }
 
 impl Profile {
+    pub fn new(
+        host: Option<String>,
+        user: Option<String>,
+        password: Option<String>,
+        api_key: Option<String>,
+        content_type: Option<String>,
+        insecure: bool,
+        ca_cert: Option<String>,
+    ) -> Self {
+        Profile {
+            host,
+            user,
+            password,
+            api_key,
+            content_type,
+            insecure,
+            ca_cert,
+        }
+    }
+
     pub fn host(&self) -> Option<String> {
         self.host.clone().map(|s| s.to_string())
     }
@@ -56,9 +76,15 @@ impl Profile {
 pub struct IniFile;
 
 impl IniFile {
-    pub fn exists(file_path: &str) -> bool {
+    pub fn profile_exists(file_path: &str, name: &str) -> bool {
         let ini_file = shellexpand::tilde(file_path).to_string();
-        Path::new(&ini_file).exists()
+        if !Path::new(&ini_file).exists() {
+            return false;
+        }
+        Ini::load_from_file(file_path)
+            .unwrap()
+            .section(Some(name))
+            .is_some()
     }
 
     pub fn load_profile(
