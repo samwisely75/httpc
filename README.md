@@ -13,9 +13,11 @@ Light-weight profile-based HTTP client enables you to write a request in natural
 
 The simplest use is to run the following command in your terminal: 
 
-```
+```sh
 http GET /
 ```
 
-It issues the given HTTP request based on the profile configured in your `~/.http` and print the response.
+It issues the given HTTP request based on the profile configured in your `~/.http` and print the response. If the `~/.http` is not found and if the URL parameter doesn't start with `http`, it'll prompt to create one.
+
+
 
