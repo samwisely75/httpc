@@ -1,7 +1,7 @@
 pub use clap::Parser;
 
 #[derive(Parser, Debug)]
-#[command()]
+#[command(version, about, long_about = None)]
 pub struct CommandLineArgs {
     #[clap(help = "HTTP method (GET/POST/PUT/DELETE etc.)")]
     method: String,
@@ -89,5 +89,58 @@ impl CommandLineArgs {
 
     pub fn stdin(&self) -> bool {
         self.stdin
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const TEST_METHOD: &str = "GET";
+    const TEST_URL: &str = "https://example.com";
+    const TEST_TEXT: &str = "{ \"query\": { \"match_all\": {} } }";
+    const TEST_PROFILE: &str = "default";
+    const TEST_USER: &str = "user";
+    const TEST_PASSWORD: &str = "password";
+    const TEST_CONTENT_TYPE: &str = "application/json";
+    const TEST_CA_CERT: &str = "/path/to/ca_cert.pem";
+    const TEST_INSECURE: bool = true;
+
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        CommandLineArgs::command().debug_assert()
+    }
+
+    #[test]
+    fn test_parse_args() {
+        let params = vec![
+            "http",
+            TEST_METHOD,
+            TEST_URL,
+            TEST_TEXT,
+            "-p",
+            TEST_PROFILE,
+            "-u",
+            TEST_USER,
+            "-w",
+            TEST_PASSWORD,
+            "-c",
+            TEST_CONTENT_TYPE,
+            "-r",
+            TEST_CA_CERT,
+            "-k",
+        ];
+        let args = CommandLineArgs::parse_from(params.iter());
+
+        assert_eq!(args.method, TEST_METHOD);
+        assert_eq!(args.url, TEST_URL);
+        assert_eq!(args.text, Some(TEST_TEXT.to_string()));
+        assert_eq!(args.profile, TEST_PROFILE);
+        assert_eq!(args.user, Some(TEST_USER.to_string()));
+        assert_eq!(args.password, Some(TEST_PASSWORD.to_string()));
+        assert_eq!(args.content_type, Some(TEST_CONTENT_TYPE.to_string()));
+        assert_eq!(args.ca_cert, Some(TEST_CA_CERT.to_string()));
+        assert_eq!(args.insecure, TEST_INSECURE);
     }
 }
