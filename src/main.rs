@@ -16,10 +16,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let req_args = get_request_args(&cmd_args)?;
 
     if cmd_args.verbose() {
-        eprintln!("> {} {}", req_args.method, req_args.url);
+        eprintln!("> {} {}", req_args.method(), req_args.url());
     }
 
-    let res = send_request(req_args).await?;
+    let res = send_request(&req_args).await?;
 
     if cmd_args.verbose() {
         eprintln!("> status: {}", res.status());
@@ -137,15 +137,15 @@ fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs, Box<dyn s
         cmd_args.text()
     };
 
-    Ok(RequestArgs {
-        method: cmd_args.method(),
-        url: url,
-        body: body_text,
-        user: user,
-        password: password,
-        insecure: insecure,
-        ca_certs: ca_cert,
-        api_key: api_key,
-        content_type: content_type,
-    })
+    Ok(RequestArgs::new(
+        cmd_args.method(),
+        url,
+        body_text,
+        user,
+        password,
+        api_key,
+        insecure,
+        ca_cert,
+        content_type,
+    ))
 }
