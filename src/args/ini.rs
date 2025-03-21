@@ -1,5 +1,3 @@
-extern crate ini;
-
 use ini::Ini;
 use std::path::Path;
 
@@ -55,7 +53,7 @@ impl Profile {
     }
 }
 
-pub struct IniFile; 
+pub struct IniFile;
 
 impl IniFile {
     pub fn exists(file_path: &str) -> bool {
@@ -63,7 +61,10 @@ impl IniFile {
         Path::new(&ini_file).exists()
     }
 
-    pub fn load_profile(file_path: &str, name: &str) -> Result<Option<Profile>, Box<dyn std::error::Error>> {
+    pub fn load_profile(
+        file_path: &str,
+        name: &str,
+    ) -> Result<Option<Profile>, Box<dyn std::error::Error>> {
         let file_path = shellexpand::tilde(file_path).to_string();
 
         if !Path::new(&file_path).exists() {
@@ -122,14 +123,10 @@ impl IniFile {
             sect.set(INI_PASSWORD, profile.password().unwrap());
         }
         if profile.api_key().is_some() {
-            sect.set(INI_API_KEY, profile
-                .api_key()
-                .unwrap());
+            sect.set(INI_API_KEY, profile.api_key().unwrap());
         }
         if profile.content_type().is_some() {
-            sect.set(INI_CONTENT_TYPE, profile
-                .content_type()
-                .unwrap());
+            sect.set(INI_CONTENT_TYPE, profile.content_type().unwrap());
         }
         sect.set(INI_INSECURE, profile.insecure().to_string());
 
@@ -202,7 +199,7 @@ mod tests {
         assert_eq!(profile.api_key(), Some(TEST_API_KEY.to_string()));
         assert_eq!(profile.content_type(), Some(TEST_CONTENT_TYPE.to_string()));
         assert_eq!(profile.insecure(), false);
-        
+
         Ok(profile)
     }
 
@@ -225,7 +222,7 @@ mod tests {
             content_type: Some(TEST_CONTENT_TYPE.to_string()),
             insecure: false,
             ca_cert: Some(TEST_CA_CERT.to_string()),
-        }; 
+        };
         let temp_file = NamedTempFile::new()?;
         let path = temp_file.path().to_str().unwrap().to_string();
 
