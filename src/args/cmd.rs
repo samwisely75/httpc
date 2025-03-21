@@ -107,7 +107,7 @@ mod test {
     const TEST_INSECURE: bool = true;
 
     #[test]
-    fn verify_cli() {
+    fn test_cli() {
         use clap::CommandFactory;
         CommandLineArgs::command().debug_assert()
     }
