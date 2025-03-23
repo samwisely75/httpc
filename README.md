@@ -1,10 +1,10 @@
 # wiq (web interface query)
 
-![GitHub](https://img.shields.io/badge/github-elasticsatch%2Fhttp-blue?logo=github)
+![GitHub repo](https://img.shields.io/badge/github-elasticsatch%2Fwiq-blue?logo=github)
+![GitHub build](https://github.com/elasticsatch/wiq/actions/workflows/rust.yml/badge.svg)
 [![crates.io](https://img.shields.io/crates/v/wiq.svg)](https://crates.io/crates/wiq)
 [![docs.rs](https://docs.rs/wiq/badge.svg)](https://docs.rs/wiq)
 [![license](https://img.shields.io/crates/l/wiq.svg)](https://crates.io/crates/wiq)
-![build badge](https://github.com/elasticsatch/wiq/actions/workflows/rust.yml/badge.svg)
 
 A light-weight profile-based HTTP client allows you to talk to web servers with a minimal effort.
 
@@ -26,25 +26,6 @@ wiq PUT _cluster/settings '{
 }'
 ```
 
-The commands above are using `default` profile in your `~/.wiq`, a configuration file that contains the base url (e.g. `https://my-remote-server:9200`), user, password, and other parameters. You can switch the connection by specifying `--profile` (or `-p`) parameter. 
-
-```sh
-wiq -p my-dev-cluster GET /_cluster/settings
-wiq -p cust-qa-cluster GET /_cluster/settings
-```
-
-If you don't have a `default` profile, it'll prompt you to create one at the first attempt. You can run the command without configuring `~/.wiq` by providing a URL starts with `http://` or `https://` directly into the `URL` parameter, like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration. 
-
-```sh
-wiq GET https://my-local-server:9200/_cluster/health \
-    --user elastic \
-    --password changeme \
-    --ca-cert /path/to/ca.pem \
-    --content-type application/json
-```
-
-For all available command line options, run `wiq -h` or `wiq --help`.
-
 You can also pass a request body data through the standard input with specifying `--stdin` (or `-i`).
 
 ```sh
@@ -57,10 +38,30 @@ echo '{
         }
     }
 }' \
-| wiq -p dev1 -i GET my-index/_search \
+| wiq -i GET my-index/_search \
 | jq -r '.hits.hits[] | ._source | [ .name, .age ] | @tsv' \
 | column -t
 ```
+
+The commands above are using `default` profile in your `~/.wiq`, a configuration file that contains the base url (e.g. `https://my-remote-server:9200`), user, password, and other parameters. You can switch the connection by specifying `--profile` (or `-p`) parameter. 
+
+```sh
+wiq -p my-dev-cluster GET /_cluster/settings
+wiq -p cust-qa-cluster GET /_cluster/settings
+```
+
+If you don't have a `default` profile, it'll prompt you to create one at the first attempt. 
+
+You can run the command without configuring `~/.wiq` by providing a URL starts with `http://` or `https://` directly into the `URL` parameter, like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration. 
+
+```sh
+wiq GET https://my-local-server:9200/_cluster/health \
+    --user elastic \
+    --password changeme \
+    --ca-cert /path/to/ca.pem
+```
+
+For all available command line options, run `wiq -h` or `wiq --help`.
 
 ## Installation
 
@@ -70,7 +71,7 @@ echo '{
 
 ## Configuration
 
-The configuration can be done through `~/.wiq` file, which is in a good-old INI format that contains more than one sections, consisting of more than one key-value pairs. 
+The configuration can be done through `~/.wiq` file, which is in a good-old INI format that contains more than one profiles, consisting of more than one key-value pairs. You can switch the profile by specifying `--profile` (or `-p`) command line option. If you don't specify the profile, `default` will be used.
 
 ```ini
 [default]
@@ -79,10 +80,12 @@ user = elastic
 password = changeme
 insecure = false
 ca_cert = /path/to/ca.pem
-content_type = application/json
+header:content-type = application/json
+header:accept = application/json
+header:user-agent = wiq/0.1
 ```
 
-You can switch the profile by specifying `--profile` (or `-p`) command line option. If you don't specify the profile, `default` will be used.
+Keys starts with `header:` will be treated as a HTTP header. You can specify multiple headers by adding more keys with the same prefix. 
 
 ## Background / Motivation
 
@@ -100,4 +103,4 @@ I have been playing with Rust and thought it would be a goood opportunity to imp
 
 ## Contribution
 
-Contributions are welcome. Please feel free to open an issue or pull request.
+Contributions and bug reports are welcome. Please feel free to open an issue or pull request.
