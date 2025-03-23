@@ -99,6 +99,20 @@ impl IniFile {
             None => return Ok(None),
         };
 
+        let mut headers = HashMap::new();
+        dbg!("section: {:?}", section);
+        for (key, value) in section.iter() {
+            dbg!("key: {}, value: {}", key, value);
+            if key.starts_with("header") {
+                let kv = value.splitn(2, '=').collect::<Vec<&str>>();
+                let k = kv[0].trim().to_string();
+                let v = kv[1].trim().to_string();
+                headers.insert(k, v);
+            }
+        }
+
+        dbg!(headers.clone());
+        
         fn try_get<T>(section: &Properties, key: &str) -> Option<T>
         where
             T: std::str::FromStr,
@@ -107,12 +121,6 @@ impl IniFile {
             section.get(key).map(|s| s.parse::<T>().unwrap())
         }
 
-        let headers = section
-            .iter()
-            .filter(|(key, _)| key.starts_with("header:"))
-            .map(|(key, value)| (key[7..].to_string(), value.to_string()))
-            .collect::<HashMap<String, String>>();
-
         let profile = Profile {
             host: try_get(&section, INI_HOST),
             user: try_get(&section, INI_USER),
@@ -120,7 +128,7 @@ impl IniFile {
             api_key: try_get(&section, INI_API_KEY),
             insecure: try_get::<bool>(&section, INI_INSECURE).unwrap_or(false),
             ca_cert: try_get(&section, INI_CA_CERT),
-            headers: headers,
+            headers: headers.clone(),
         };
 
         Ok(Some(profile))
@@ -129,7 +137,7 @@ impl IniFile {
     pub fn ask_profile() -> Result<Profile> {
         let i = std::io::stdin();
         let host = ask_string(&i, "host: ")?;
-        let user = if ask_binary(&i, "Do you want to use a user? [y/N]: ")? {
+        let user = if ask_binary(&i, "Do you need a user/password for this URL? [y/N]: ")? {
             Some(ask_string(&i, "user: ")?)
         } else {
             None
@@ -139,7 +147,7 @@ impl IniFile {
         } else {
             None
         };
-        let api_key = if user.is_none() && ask_binary(&i, "Do you want to use an API key? [y/N]: ")?
+        let api_key = if user.is_none() && ask_binary(&i, "Or do you use an API key? [y/N]: ")?
         {
             Some(ask_string(&i, "API key: ")?)
         } else {
@@ -189,6 +197,10 @@ impl IniFile {
             sect.set(INI_CA_CERT, profile.ca_cert().unwrap());
         }
 
+        for (k, v) in profile.headers.iter() {
+            sect.set(format!("header:{}", k), v);
+        }
+
         let p = shellexpand::tilde(file_path).to_string();
         conf.write_to_file(p).unwrap();
 
@@ -220,8 +232,8 @@ mod tests {
              ca_cert={}\n\
              insecure=false\n\
              api_key={}\n\
-             header::Content-Type={}\n\
-             header::User-Agent={}\n\
+             header:Content-Type={}\n\
+             header:User-Agent={}\n\
              ",
             DEFAULT_INI_SECTION,
             TEST_SERVER,
@@ -256,13 +268,15 @@ mod tests {
         assert_eq!(profile.ca_cert(), Some(TEST_CA_CERT.to_string()));
         assert_eq!(profile.api_key(), Some(TEST_API_KEY.to_string()));
         assert_eq!(profile.insecure(), false);
+
+        assert_eq!(profile.headers.len(), 2);
         assert_eq!(
-            profile.headers.get("Content-Type"),
-            Some(&TEST_CONTENT_TYPE.to_string())
+            profile.headers["Content-Type"],
+            TEST_CONTENT_TYPE.to_string()
         );
         assert_eq!(
-            profile.headers.get("User-Agent"),
-            Some(&TEST_USER_AGENT.to_string())
+            profile.headers["User-Agent"],
+            TEST_USER_AGENT.to_string()
         );
 
         Ok(profile)
@@ -279,6 +293,10 @@ mod tests {
 
     #[test]
     fn test_add_profile() -> Result<()> {
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".to_string(), TEST_CONTENT_TYPE.to_string());
+        headers.insert("User-Agent".to_string(), TEST_USER_AGENT.to_string());
+
         let profile = Profile {
             host: Some(TEST_SERVER.to_string()),
             user: Some(TEST_USER.to_string()),
@@ -286,7 +304,7 @@ mod tests {
             api_key: Some(TEST_API_KEY.to_string()),
             insecure: false,
             ca_cert: Some(TEST_CA_CERT.to_string()),
-            headers: HashMap::new(),
+            headers: headers,
         };
         let temp_file = NamedTempFile::new()?;
         let path = temp_file.path().to_str().unwrap().to_string();

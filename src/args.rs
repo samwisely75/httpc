@@ -101,7 +101,6 @@ mod test {
     const TEST_PROFILE: &str = "default";
     const TEST_USER: &str = "user";
     const TEST_PASSWORD: &str = "password";
-    const TEST_CONTENT_TYPE: &str = "application/json";
     const TEST_CA_CERT: &str = "/path/to/ca_cert.pem";
     const TEST_INSECURE: bool = true;
 
@@ -124,8 +123,6 @@ mod test {
             TEST_USER,
             "-w",
             TEST_PASSWORD,
-            "-c",
-            TEST_CONTENT_TYPE,
             "-r",
             TEST_CA_CERT,
             "-k",
