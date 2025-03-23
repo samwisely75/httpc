@@ -9,7 +9,7 @@ license = "Apache License 2.0"
 [dependencies]
 base64 = "0.22.1"
 flate2 = "1.1.0"
-reqwest = { version = "0.12.12", features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12.12", features = ["native-tls", "blocking", "json", "rustls-tls"] }
 tokio = { version = "1.44.0", features = ["full"] }
 clap = { version = "4.5.28", features = ["derive"] }
 rust-ini = "0.21.1"

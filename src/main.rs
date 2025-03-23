@@ -1,21 +1,26 @@
 mod args;
 mod http;
+mod profile;
+mod utils;
 
-use args::{
-    cmd::CommandLineArgs,
-    ini::{DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION, IniFile, Profile},
-};
+use args::CommandLineArgs;
 use http::{RequestArgs, send_request};
+use profile::{DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION, IniFile};
 use reqwest::StatusCode;
-use std::io::{Read, stdin};
-use tokio;
+use std::{collections::HashMap, io::stdin};
+// use tokio;
+use utils::Result;
+use utils::read_stdin;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     let cmd_args = CommandLineArgs::get();
     let req_args = get_request_args(&cmd_args)?;
 
     if cmd_args.verbose() {
+        req_args.headers.iter().for_each(|(name, value)| {
+            eprintln!("> {}: {}", name.to_string(), value.to_string());
+        });
         eprintln!("> {} {}", req_args.method(), req_args.url());
     }
 
@@ -23,9 +28,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if cmd_args.verbose() {
         eprintln!("> status: {}", res.status());
-        for (name, value) in res.headers().iter() {
-            eprintln!("> {}: {}", name.to_string(), value.to_str()?);
-        }
+        res.headers().iter().for_each(|(name, value)| {
+            eprintln!("> {}: {}", name.to_string(), value.to_str().unwrap());
+        });
     }
 
     if res.status() == StatusCode::OK {
@@ -37,102 +42,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn ask_string(msg: &str) -> Result<String, Box<dyn std::error::Error>> {
-    if msg.len() > 0 {
-        eprint!("{}", msg);
-    }
-
-    let mut buffer = String::new();
-    stdin().read_line(&mut buffer)?;
-    buffer.pop(); // remove last \n
-    Ok(buffer)
-}
-
-fn create_default_profile() -> Result<(), Box<dyn std::error::Error>> {
-    eprintln!("Looks like you haven't configured the default profile yet. Let's create it now.");
-
-    let host = ask_string("host: ")?;
-    let user = ask_string("user: ")?;
-    let password = if user.len() > 0 {
-        ask_string("password: ")?
-    } else {
-        "".to_string()
-    };
-    let profile = Profile::new(
-        Some(host),
-        Some(user),
-        Some(password),
-        None,
-        None,
-        false,
-        None,
-    );
-    let _ = IniFile::add_profile(DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION, &profile);
-    Ok(())
-}
-
-fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs, Box<dyn std::error::Error>> {
+fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs> {
     let cmd_url = cmd_args.url();
-    let cmd_profile = cmd_args.profile();
+    let profile_name = cmd_args.profile();
 
-    if !IniFile::profile_exists(DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION)
-        && cmd_profile == DEFAULT_INI_SECTION
-        && !cmd_url.starts_with("http")
-    {
-        create_default_profile()?;
-    }
+    let no_valid_url = profile_name == DEFAULT_INI_SECTION
+        && !IniFile::profile_exists(DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION)
+        && !cmd_args.url().starts_with("http");
 
-    let ini_profile = IniFile::load_profile(DEFAULT_INI_FILE_PATH, cmd_profile.as_str())?;
-    let ini_host = ini_profile.as_ref().and_then(|i| i.host());
-    let ini_user = ini_profile.as_ref().and_then(|i| i.user());
-    let ini_password = ini_profile.as_ref().and_then(|i| i.password());
-    let ini_api_key = ini_profile.as_ref().and_then(|i| i.api_key());
-    let ini_insecure = ini_profile.as_ref().and_then(|i| Some(i.insecure()));
-    let ini_content_type = ini_profile.as_ref().and_then(|i| i.content_type());
-    let ini_ca_cert = ini_profile.as_ref().and_then(|i| i.ca_cert());
-
-    let url: String = match ini_profile {
-        Some(_) => {
-            if cmd_url.starts_with("http") {
-                cmd_url
-            } else {
-                let mut host = ini_host.unwrap_or("http://localhost".to_string());
-                host = if host.ends_with("/") {
-                    host.pop();
-                    host
-                } else {
-                    host
-                };
-                let path = if cmd_url.starts_with("/") {
-                    cmd_url[1..].to_string()
-                } else {
-                    cmd_url
-                };
-                format!("{}/{}", host, path)
-            }
-        }
-        None => cmd_url,
-    };
-
-    let user = cmd_args.user().and_then(|u| Some(u)).or(ini_user);
-    let password = cmd_args.password().and_then(|p| Some(p)).or(ini_password);
-    let api_key = cmd_args.api_key().and_then(|a| Some(a)).or(ini_api_key);
-    let insecure = if cmd_args.insecure() {
-        true
+    let profile = if no_valid_url {
+        eprintln!("Let's create a default profile now.");
+        let p = IniFile::ask_profile()?;
+        IniFile::add_profile(DEFAULT_INI_FILE_PATH, &profile_name, &p)?;
+        Some(p)
     } else {
-        ini_insecure.unwrap_or(false)
+        IniFile::load_profile(DEFAULT_INI_FILE_PATH, profile_name.as_str())?
     };
-    let ca_cert = cmd_args.ca_cert().and_then(|c| Some(c)).or(ini_ca_cert);
-    let content_type = cmd_args
-        .content_type()
-        .and_then(|c| Some(c))
-        .or(ini_content_type);
 
+    let prof_ref = profile.as_ref();
+
+    let url = if cmd_url.starts_with("http") {
+        cmd_url
+    } else {
+        format!(
+            "{}{}",
+            prof_ref.and_then(|i| i.host()).unwrap_or("".to_string()),
+            cmd_url
+        )
+    };
+    let user = cmd_args.user().or(prof_ref.and_then(|p| p.user()));
+    let password = cmd_args.password().or(prof_ref.and_then(|p| p.password()));
+    let api_key = cmd_args.api_key().or(prof_ref.and_then(|p| p.api_key()));
+    let ca_certs = cmd_args.ca_cert().or(prof_ref.and_then(|p| p.ca_cert()));
+    let insecure =
+        cmd_args.insecure() || prof_ref.and_then(|p| Some(p.insecure())).unwrap_or(false);
+    let headers = profile
+        .and_then(|p| Some(p.headers))
+        .unwrap_or(HashMap::new());
     let body_text = if cmd_args.stdin() {
-        dbg!("Reading from stdin ...");
-        let mut buffer = String::new();
-        stdin().read_to_string(&mut buffer)?;
-        Some(buffer)
+        read_stdin(&mut stdin())?
     } else {
         cmd_args.text()
     };
@@ -145,7 +93,7 @@ fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs, Box<dyn s
         password,
         api_key,
         insecure,
-        ca_cert,
-        content_type,
+        ca_certs,
+        headers,
     ))
 }

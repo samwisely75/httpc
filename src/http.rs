@@ -1,27 +1,22 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use flate2::read::{DeflateDecoder, GzDecoder};
-use reqwest::{
-    Client, Method, StatusCode,
-    header::{HeaderMap, HeaderValue},
+use reqwest::{Client,
+    header::{HeaderMap, HeaderName, HeaderValue}, Certificate, Method, StatusCode
 };
 use std::{
+    collections::HashMap,
     io::Read,
     str::{self, FromStr},
 };
 use zstd;
 
-type StdError = Box<dyn std::error::Error>;
+use crate::utils::Result;
 
 const ENC_NONE: &str = "plaintext";
 const ENC_GZIP: &str = "gzip";
 const ENC_DEFLATE: &str = "deflate";
 const ENC_ZSTD: &str = "zstd";
 
-const DEFAULT_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
-const DEFAULT_CONTENT_TYPE: &str = "text/html; charset=UTF-8";
-const DEFAULT_ACCEPT: &str = "*/*";
-const DEFAULT_ACCEPT_LANG: &str = "ja";
-const DEFAULT_ACCEPT_ENC: &str = "{ENC_GZIP}, {ENC_DEFLATE}, {ENC_ZSTD}";
 
 #[derive(Debug)]
 pub struct RequestArgs {
@@ -33,7 +28,7 @@ pub struct RequestArgs {
     api_key: Option<String>,
     insecure: bool,
     ca_certs: Option<String>,
-    content_type: Option<String>,
+    pub headers: HashMap<String, String>,
 }
 
 impl RequestArgs {
@@ -46,7 +41,7 @@ impl RequestArgs {
         api_key: Option<String>,
         insecure: bool,
         ca_certs: Option<String>,
-        content_type: Option<String>,
+        headers: HashMap<String, String>,
     ) -> Self {
         RequestArgs {
             method,
@@ -57,7 +52,7 @@ impl RequestArgs {
             api_key,
             insecure,
             ca_certs,
-            content_type,
+            headers,
         }
     }
     pub fn method(&self) -> String {
@@ -84,9 +79,6 @@ impl RequestArgs {
     pub fn ca_certs(&self) -> Option<String> {
         self.ca_certs.clone()
     }
-    pub fn content_type(&self) -> Option<String> {
-        self.content_type.clone()
-    }
 }
 #[derive(Debug)]
 pub struct Response {
@@ -97,7 +89,7 @@ pub struct Response {
 
 impl Response {
     pub fn status(&self) -> StatusCode {
-        self.status
+        self.status.clone()
     }
 
     pub fn body(&self) -> &str {
@@ -109,17 +101,18 @@ impl Response {
     }
 }
 
-pub async fn send_request(args: &RequestArgs) -> Result<Response, StdError> {
+pub async fn send_request(args: &RequestArgs) -> Result<Response> {
     let method = Method::from_str(args.method.as_str()).unwrap();
     let body = args.body().clone().unwrap_or("".to_string());
     let url = args.url.clone();
 
-    let res = get_client(args)
-        .await?
+    let res = get_client(args)?
         .request(method, url)
         .body(body)
         .send()
-        .await?;
+        .await
+        .unwrap();
+    // .await?;
     let headers = res.headers().clone();
     let status = res.status();
     let default_encooding = HeaderValue::from_static(ENC_NONE);
@@ -128,7 +121,7 @@ pub async fn send_request(args: &RequestArgs) -> Result<Response, StdError> {
         .unwrap_or(&default_encooding)
         .to_str()
         .unwrap();
-    let body_bytes = res.bytes().await?;
+    let body_bytes = res.bytes().await.unwrap();
     let body_str = match encoding {
         ENC_GZIP => decode_gzip(&body_bytes)?,
         ENC_DEFLATE => decode_deflate(&body_bytes)?,
@@ -144,28 +137,20 @@ pub async fn send_request(args: &RequestArgs) -> Result<Response, StdError> {
     })
 }
 
-fn get_client_headers(args: &RequestArgs) -> HeaderMap {
-    let mut headers = HeaderMap::new();
-    let content_type = args
-        .content_type()
-        .unwrap_or(DEFAULT_CONTENT_TYPE.to_string());
-    headers.insert(
-        "Content-Type",
-        HeaderValue::from_str(&content_type).unwrap(),
-    );
-    headers.insert("User-Agent", HeaderValue::from_static(DEFAULT_USER_AGENT));
-    headers.insert("Accept", HeaderValue::from_static(DEFAULT_ACCEPT));
-    headers.insert(
-        "Accept-Encoding",
-        HeaderValue::from_static(DEFAULT_ACCEPT_ENC),
-    );
-    headers.insert(
-        "Accept-Language",
-        HeaderValue::from_static(DEFAULT_ACCEPT_LANG),
-    );
+fn get_request_headers(args: &RequestArgs) -> HeaderMap {
+    let mut headers = args
+        .headers
+        .iter()
+        .map(|(key, value)| {
+            (
+                HeaderName::from_bytes(key.as_bytes()).unwrap(),
+                HeaderValue::from_str(value).unwrap(),
+            )
+        })
+        .collect::<HeaderMap>();
 
     if args.api_key.is_some() {
-        let auth_value = format!("Bearer {}", args.api_key().unwrap());
+        let auth_value = format!("ApiKey {}", args.api_key().unwrap());
         headers.insert("Authorization", HeaderValue::from_str(&auth_value).unwrap());
     } else if args.user().is_some() && args.password().is_some() {
         let auth_str = format!("{}:{}", args.user().unwrap(), args.password().unwrap());
@@ -176,43 +161,51 @@ fn get_client_headers(args: &RequestArgs) -> HeaderMap {
     headers
 }
 
-async fn get_cert(cert_path: &str) -> Result<reqwest::Certificate, StdError> {
-    let cert = tokio::fs::read(cert_path).await?;
-    let cert = reqwest::Certificate::from_pem(&cert)?;
+fn get_cert(cert_path: &str) -> Result<Certificate> {
+    let p = shellexpand::tilde(cert_path).to_string();
+    let cert = std::fs::read(p).unwrap();
+    let cert = Certificate::from_pem(&cert)?;
     Ok(cert)
 }
 
-async fn get_client(args: &RequestArgs) -> Result<Client, StdError> {
-    let headers = get_client_headers(args);
-    let mut builder = Client::builder()
+fn get_client(args: &RequestArgs) -> Result<Client> {
+    let headers = get_request_headers(args);
+
+    let builder = reqwest::ClientBuilder::new()
         .default_headers(headers)
-        .danger_accept_invalid_certs(args.insecure());
+        .danger_accept_invalid_certs(args.insecure())
+        .tls_info(true)
+        .connection_verbose(true);
 
-    if args.insecure() && args.ca_certs().is_some() {
+    let client = if !args.insecure() && args.ca_certs().is_some() {
         let cert_path = args.ca_certs().unwrap();
-        let cert = get_cert(&cert_path).await?;
-        builder = builder.add_root_certificate(cert);
-    }
+        let cert = get_cert(&cert_path)?;
+        builder
+            .add_root_certificate(cert)
+            .use_rustls_tls()
+            .build()?
+    } else {
+        builder.build()?
+    };
 
-    let client = builder.build()?;
     Ok(client)
 }
 
-fn decode_gzip(data: &[u8]) -> Result<String, StdError> {
+fn decode_gzip(data: &[u8]) -> Result<String> {
     let mut decoder = GzDecoder::new(data);
     let mut decoded_data = Vec::new();
     decoder.read_to_end(&mut decoded_data)?;
     Ok(str::from_utf8(&decoded_data)?.to_string())
 }
 
-fn decode_deflate(data: &[u8]) -> Result<String, StdError> {
+fn decode_deflate(data: &[u8]) -> Result<String> {
     let mut decoder = DeflateDecoder::new(data);
     let mut decoded_data = Vec::new();
     decoder.read_to_end(&mut decoded_data)?;
     Ok(str::from_utf8(&decoded_data)?.to_string())
 }
 
-fn decode_zstd(data: &[u8]) -> Result<String, StdError> {
+fn decode_zstd(data: &[u8]) -> Result<String> {
     let decoded_data = zstd::decode_all(data)?;
     Ok(str::from_utf8(&decoded_data)?.to_string())
 }
@@ -220,6 +213,11 @@ fn decode_zstd(data: &[u8]) -> Result<String, StdError> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    const DEFAULT_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+    const DEFAULT_ACCEPT: &str = "*/*";
+    const DEFAULT_ACCEPT_LANG: &str = "ja";
+    const DEFAULT_ACCEPT_ENC: &str = "{ENC_GZIP}, {ENC_DEFLATE}, {ENC_ZSTD}";
 
     #[test]
     fn test_decode_gzip() {
@@ -248,20 +246,27 @@ mod test {
     }
 
     #[test]
-    fn test_get_client_headers() -> Result<(), StdError> {
+    fn test_get_request_headers() -> Result<()> {
+        let mut headers= HashMap::new();
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        headers.insert("User-Agent".to_string(), DEFAULT_USER_AGENT.to_string());
+        headers.insert("Accept".to_string(), DEFAULT_ACCEPT.to_string());
+        headers.insert("Accept-Encoding".to_string(), DEFAULT_ACCEPT_ENC.to_string());
+        headers.insert("Accept-Language".to_string(), DEFAULT_ACCEPT_LANG.to_string());
+
         let args = RequestArgs {
             method: "GET".to_string(),
             url: "https://example.com".to_string(),
             body: None,
-            content_type: Some("application/json".to_string()),
             user: Some("admin".to_string()),
             password: Some("Password_123".to_string()),
             api_key: None,
             insecure: false,
             ca_certs: None,
+            headers: headers,
         };
 
-        let headers = get_client_headers(&args);
+        let headers = get_request_headers(&args);
 
         assert_eq!(headers.get("Content-Type").unwrap(), "application/json");
         assert_eq!(headers.get("User-Agent").unwrap(), DEFAULT_USER_AGENT);
