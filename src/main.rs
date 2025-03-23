@@ -8,7 +8,6 @@ use http::{RequestArgs, send_request};
 use profile::{DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION, IniFile};
 use reqwest::StatusCode;
 use std::{collections::HashMap, io::stdin};
-// use tokio;
 use utils::Result;
 use utils::read_stdin;
 

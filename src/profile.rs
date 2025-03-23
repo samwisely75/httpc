@@ -100,13 +100,10 @@ impl IniFile {
         };
 
         let mut headers = HashMap::new();
-        dbg!("section: {:?}", section);
         for (key, value) in section.iter() {
-            dbg!("key: {}, value: {}", key, value);
-            if key.starts_with("header") {
-                let kv = value.splitn(2, '=').collect::<Vec<&str>>();
-                let k = kv[0].trim().to_string();
-                let v = kv[1].trim().to_string();
+            if key.starts_with("@") {
+                let k = key[1..].to_string();
+                let v = value.to_string();
                 headers.insert(k, v);
             }
         }
@@ -198,7 +195,7 @@ impl IniFile {
         }
 
         for (k, v) in profile.headers.iter() {
-            sect.set(format!("header:{}", k), v);
+            sect.set(format!("@{}", k), v);
         }
 
         let p = shellexpand::tilde(file_path).to_string();
@@ -232,8 +229,8 @@ mod tests {
              ca_cert={}\n\
              insecure=false\n\
              api_key={}\n\
-             header:Content-Type={}\n\
-             header:User-Agent={}\n\
+             @Content-Type={}\n\
+             @User-Agent={}\n\
              ",
             DEFAULT_INI_SECTION,
             TEST_SERVER,
