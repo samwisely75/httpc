@@ -1,8 +1,8 @@
 # wiq (web interface query)
 
-![GitHub build](https://github.com/elasticsatch/wiq/actions/workflows/rust.yml/badge.svg)
+[![GitHub build](https://github.com/elasticsatch/wiq/actions/workflows/rust.yml/badge.svg)](https://github.com/elasticsatch/wiq/actions/workflows/rust.yml)
 
-A light-weight profile-based HTTP client allows you to talk to web servers with a minimal effort.
+A light-weight profile-based HTTP client allows you to talk to web servers with a minimal effort. 
 
 ## Usage
 
@@ -77,11 +77,13 @@ password = changeme
 insecure = false
 ca_cert = /path/to/ca.pem
 @content-type = application/json
-@accept = application/json
 @user-agent = wiq/0.1
+@accept = */*
+@accept-encoding = gzip, deflate
+@accept-langugage = en-US,en;q=0.9
 ```
 
-Entity starts with `@` will be treated as HTTP header. You can specify multiple headers by adding more keys with the same prefix. 
+Entities start with `@` will be treated as HTTP headers. You can specify multiple headers by adding more keys with the same prefix. 
 
 ## Background / Motivation
 
@@ -103,7 +105,7 @@ This is painful even for a terminal guy like me. Why can't I bring the Dev Tools
 
 Also, I occasionally need to talk to two or three different clusters at the same time. I often launch multiple terminals to talk to a cluster in a window, and I easily get lost in which window is talking to which cluster. Here, I wanted to have a profile system that allows me to switch the counterpart easily in a single terminal, like `aws-cli` does.
 
-Yes, Bash or Python does the job. I've been there and done that. The problem is that it will soon become lengthy and difficult to maintain. I also needed to make it work with Python 2.6 or 2.7 for someone using vintage OSs, and I had hard time to maintain the compatibility across different/old version of Pythons. 
+Yes, Bash or Python does the job; I've been there and done that. The problem is that it will soon become lengthy and difficult to maintain. I also needed to make it work with Python 2.6 or 2.7 for someone using vintage OSs, and I had hard time to maintain the compatibility across different/old version of Pythons. 
 
 I have been playing with Rust and thought it would be a goood opportunity to implement it with it. The advantage of Rust is that it's fast, as fast as native C/C++ tools including curl, which is essential for this kind of stuff. And you won't suffer from the compatibility issue like Python's case.
 
