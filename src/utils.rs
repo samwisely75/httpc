@@ -3,15 +3,14 @@ use std::path::Path;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-pub fn read_stdin(i: &mut Stdin) -> Result<Option<String>> {
-    let mut buffer = String::new();
-    i.read_to_string(&mut buffer)?;
-
-    if buffer.len() == 0 {
-        Ok(None)
-    } else {
-        Ok(Some(buffer))
+pub fn read_stdin() -> Result<Option<String>> {
+    if atty::is(atty::Stream::Stdin) {
+        return Ok(None);
     }
+
+    let mut buffer = String::new();
+    std::io::stdin().read_to_string(&mut buffer)?;
+    Ok(Some(buffer))
 }
 
 pub fn ask_string(i: &Stdin, msg: &str) -> Result<String> {

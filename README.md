@@ -1,4 +1,4 @@
-# wiq (web interface query)
+# wiq
 
 [![GitHub build](https://github.com/elasticsatch/wiq/actions/workflows/rust.yml/badge.svg)](https://github.com/elasticsatch/wiq/actions/workflows/rust.yml)
 
@@ -22,7 +22,7 @@ wiq PUT _cluster/settings '{
 }'
 ```
 
-You can also pass a request body data through the standard input with specifying `--stdin` (or `-i`).
+You can also pass a request body via standard input: 
 
 ```sh
 echo '{
@@ -34,21 +34,19 @@ echo '{
         }
     }
 }' \
-| wiq -i GET my-index/_search \
-| jq -r '.hits.hits[] | ._source | [ .name, .age ] | @tsv' \
+| wiq GET my-index/_search \
+| jq -r '.hits.hits[] | [ ._id, ._source.name ] | @tsv' \
 | column -t
 ```
 
-The commands above are using `default` profile in your `~/.wiq`, a configuration file that contains the base url (e.g. `https://my-remote-server:9200`), user, password, and other parameters. You can switch the connection by specifying `--profile` (or `-p`) parameter. 
+The commands above are using `default` profile in your `~/.wiq`, a configuration file that contains the base url (e.g. `https://my-remote-server:9200`), user, password, and other parameters. You can switch the context by specifying another profile name in `--profile` (or `-p`). 
 
 ```sh
 wiq -p my-dev-cluster GET /_cluster/settings
 wiq -p cust-qa-cluster GET /_cluster/settings
 ```
 
-If you don't have a `default` profile, it'll prompt you to create one at the first attempt. 
-
-You can run the command without configuring `~/.wiq` by providing a URL starts with `http://` or `https://` directly into the `URL` parameter, like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration. 
+If you don't have a `default` profile, it'll ask you to create one.  You can run the command without configuring `~/.wiq` by providing a URL starts with `http://` or `https://` directly into the `URL` like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration. 
 
 ```sh
 wiq GET https://my-local-server:9200/_cluster/health \
@@ -85,13 +83,11 @@ ca_cert = /path/to/ca.pem
 
 Entities start with `@` will be treated as HTTP headers. You can specify multiple headers by adding more keys with the same prefix. 
 
-## Background / Motivation
+## Motivation
 
 I am a consultant at Elasticsearch and I talk to Elasticsearch every day. Kibana Dev Tools is the primary option, however on the field of consulting it's not always available. 
 
-For example, when I got stuck while building a fresh self-hosted ES cluster, I open up a terminal window and ssh to one of the node, check the systemd status, tail the log, and check elasticsearch.yml. Often time I need to run some diagnostic queries agaist the cluster to check its internal state. If the ES node is up and running it's on `https://localhost:9200`, otherwise I need to talk to other nodes. 
-
-`curl` works great for that needs, but one thing I don't like is to provide all static parameters such as `-u elastic:password`, `-H "content-type: application/json"`, or `--insecure` every time I query the node. The scheme defintion, host name, and port number in the URL are redundant too. 
+`curl` works great for that needs, but one thing I don't like is to provide all static parameters such as `-u elastic:password` and `-H "content-type: application/json"` every time I query the node. The scheme defintion, host name, and port number in the URL are redundant too. 
 
 In Kibana Dev Tools you simply say:
 
@@ -101,14 +97,19 @@ but in `curl` it'll be:
 
 `curl -XGET -u elastic:password -H "content-type: application/json" https://elastic-prod.es.us-central1.gcp.cloud.es.io/_cat/indices?v` 
 
-This is painful even for a terminal guy like me. Why can't I bring the Dev Tools experience to the terminal?
+This is painful even for a command-line maniac like me. 
 
-Also, I occasionally need to talk to two or three different clusters at the same time. I often launch multiple terminals to talk to a cluster in a window, and I easily get lost in which window is talking to which cluster. Here, I wanted to have a profile system that allows me to switch the counterpart easily in a single terminal, like `aws-cli` does.
+I know Python does the job and I've been there. The problem is that it will soon become lengthy and difficult to maintain in a single file, so you will need to carry around multiple files to make it run. This isn't cool.
 
-Yes, Bash or Python does the job; I've been there and done that. The problem is that it will soon become lengthy and difficult to maintain. I also needed to make it work with Python 2.6 or 2.7 for someone using vintage OSs, and I had hard time to maintain the compatibility across different/old version of Pythons. 
+## Enhancement Plan
 
-I have been playing with Rust and thought it would be a goood opportunity to implement it with it. The advantage of Rust is that it's fast, as fast as native C/C++ tools including curl, which is essential for this kind of stuff. And you won't suffer from the compatibility issue like Python's case.
+- [x] Remove `--stdin` parameter
+- [ ] Support proxy
+- [ ] Support multiple headers in command line options as curl does
+- [ ] Client certificate authentication with `--client-cert`
+- [ ] REPL capability
 
 ## Contribution
 
-Contributions and bug reports are welcome. Please feel free to open an issue or pull request.
+Contributions and bug reports are welcome. Please feel free to open an issue or send me a pull request.
+

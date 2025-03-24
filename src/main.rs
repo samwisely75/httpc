@@ -7,9 +7,8 @@ use args::CommandLineArgs;
 use http::{RequestArgs, send_request};
 use profile::{DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION, IniFile};
 use reqwest::StatusCode;
-use std::{collections::HashMap, io::stdin};
-use utils::Result;
-use utils::read_stdin;
+use std::collections::HashMap;
+use utils::{Result, read_stdin};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -78,13 +77,8 @@ fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs> {
     let headers = profile
         .and_then(|p| Some(p.headers))
         .unwrap_or(HashMap::new());
-    let body_text = if cmd_args.stdin() {
-        read_stdin(&mut stdin())?
-    } else {
-        cmd_args.text()
-    };
-
-    Ok(RequestArgs::new(
+    let body_text = read_stdin()?.or(cmd_args.text().map(|s| s.to_string()));
+    let req_args = RequestArgs::new(
         cmd_args.method(),
         url,
         body_text,
@@ -94,5 +88,6 @@ fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs> {
         insecure,
         ca_certs,
         headers,
-    ))
+    );
+    Ok(req_args)
 }

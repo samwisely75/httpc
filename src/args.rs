@@ -15,7 +15,7 @@ pub struct CommandLineArgs {
     user: Option<String>,
     #[clap(short = 'w', long, help = "password for basic authentication")]
     password: Option<String>,
-    #[clap(short = 'i', long, help = "API key for authentication")]
+    #[clap(short = 'a', long, help = "API key for authentication")]
     api_key: Option<String>,
     #[clap(short = 'r', long, help = "CA certificate PEM file path")]
     ca_cert: Option<String>,
@@ -32,8 +32,6 @@ pub struct CommandLineArgs {
         default_value = "false"
     )]
     verbose: bool,
-    #[clap(short = 's', long, help = "Read from stdin")]
-    stdin: bool,
 }
 
 impl CommandLineArgs {
@@ -84,10 +82,6 @@ impl CommandLineArgs {
 
     pub fn verbose(&self) -> bool {
         self.verbose
-    }
-
-    pub fn stdin(&self) -> bool {
-        self.stdin
     }
 }
 

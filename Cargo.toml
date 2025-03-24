@@ -16,4 +16,5 @@ rust-ini = "0.21.1"
 shellexpand = "3.1.0"
 zstd = "0.13.3"
 tempfile = "3.19.1"
+atty = "0.2.14"
 
