@@ -6,6 +6,8 @@ A light-weight profile-based HTTP client allows you to talk to web servers with 
 
 ## Usage
 
+#### Basics
+
 The simplest usage is to run the following command in your terminal: 
 
 ```sh
@@ -21,6 +23,8 @@ wiq PUT _cluster/settings '{
     }
 }'
 ```
+
+#### Use Standard Input
 
 You can also pass a request body via standard input: 
 
@@ -39,6 +43,8 @@ echo '{
 | column -t
 ```
 
+#### Switch Connection via Profile
+
 The commands above are using `default` profile in your `~/.wiq`, a configuration file that contains the base url (e.g. `https://my-remote-server:9200`), user, password, and other parameters. You can switch the context by specifying another profile name in `--profile` (or `-p`). 
 
 ```sh
@@ -46,7 +52,11 @@ wiq -p my-dev-cluster GET /_cluster/settings
 wiq -p cust-qa-cluster GET /_cluster/settings
 ```
 
-If you don't have a `default` profile, it'll ask you to create one.  You can run the command without configuring `~/.wiq` by providing a URL starts with `http://` or `https://` directly into the `URL` like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration. 
+If you don't have a `default` profile, it'll ask you to create one.  
+
+#### Override/Aurgment Configurations
+
+ You can run the command without configuring `~/.wiq` by providing a URL starts with `http://` or `https://` directly into the `URL` like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration.
 
 ```sh
 wiq GET https://my-local-server:9200/_cluster/health \
@@ -56,6 +66,20 @@ wiq GET https://my-local-server:9200/_cluster/health \
 ```
 
 For all available command line options, run `wiq -h` or `wiq --help`.
+
+## Features
+
+- Curl-like command line options allows to talk to web servers
+- Enable minimizing parameters 
+- Support multiple connection profiles and select by `-p` parameter
+- Support all HTTP methods (GET, POST, PUT, DELETE, etc.)
+- Support auto redirection
+- Support standard input for request body
+- Support multiple compression (gzip, deflate, zstd)
+- Support multiple headers
+- Support custom CA certtificate for SSL/TLS
+- Enable skipping SSL/TLS server certificate validation
+- Provide verbose mode writes the details of request and response to the error output
 
 ## Installation
 
@@ -83,31 +107,38 @@ ca_cert = /path/to/ca.pem
 
 Entities start with `@` will be treated as HTTP headers. You can specify multiple headers by adding more keys with the same prefix. 
 
-## Motivation
-
-I am a consultant at Elasticsearch and I talk to Elasticsearch every day. Kibana Dev Tools is the primary option, however on the field of consulting it's not always available. 
-
-`curl` works great for that needs, but one thing I don't like is to provide all static parameters such as `-u elastic:password` and `-H "content-type: application/json"` every time I query the node. The scheme defintion, host name, and port number in the URL are redundant too. 
-
-In Kibana Dev Tools you simply say:
-
-`GET /_cat/indices?v` 
-
-but in `curl` it'll be:
-
-`curl -XGET -u elastic:password -H "content-type: application/json" https://elastic-prod.es.us-central1.gcp.cloud.es.io/_cat/indices?v` 
-
-This is painful even for a command-line maniac like me. 
-
-I know Python does the job and I've been there. The problem is that it will soon become lengthy and difficult to maintain in a single file, so you will need to carry around multiple files to make it run. This isn't cool.
-
 ## Enhancement Plan
 
 - [x] Remove `--stdin` parameter
 - [ ] Support proxy
-- [ ] Support multiple headers in command line options as curl does
-- [ ] Client certificate authentication with `--client-cert`
+- [ ] Support client certificate authentication
+- [ ] Support multiple headers in command line options
+- [ ] Support binary send
+- [ ] Support multi-form post
 - [ ] REPL capability
+
+## Motivation
+
+I am a consultant at Elasticsearch and I talk to Elasticsearch every day. Kibana Dev Tools is the primary option, however on the field of consulting it's not always available. 
+
+`curl` works great for that needs, but one thing I don't like it is to provide all static parameters such as `-u elastic:password` and `-H "content-type: application/json"` every time I query the node. The scheme defintion, host name, and port number in the URL are redundant too. 
+
+In Kibana Dev Tools you can say:
+
+`GET /_cat/indices?v` 
+
+which in `curl` becomes like:
+
+```sh
+curl -XGET \
+     -u "elastic:password" \
+     -H "content-type: application/json" \
+     --url https://prod-cluster.es.us-central1.gcp.cloud.es.io/_cat/indices?v
+```
+
+This is painful even for a command-line maniac like me. 
+
+I know Python does the job and I've been there. The problem is that the source code will soon become lengthy and difficult to maintain in a single file, so you will need to carry around multiple files to make it run. You also need `requests` library to be installed, which is hassle for the vintage OSs do not have pip at the start. This isn't cool.
 
 ## Contribution
 
