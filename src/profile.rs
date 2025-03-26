@@ -96,12 +96,12 @@ impl IniFile {
         }
 
         let profile = Profile {
-            host: try_get(&section, INI_HOST),
-            user: try_get(&section, INI_USER),
-            password: try_get(&section, INI_PASSWORD),
-            api_key: try_get(&section, INI_API_KEY),
-            insecure: try_get::<bool>(&section, INI_INSECURE).unwrap_or(false),
-            ca_cert: try_get(&section, INI_CA_CERT),
+            host: try_get(section, INI_HOST),
+            user: try_get(section, INI_USER),
+            password: try_get(section, INI_PASSWORD),
+            api_key: try_get(section, INI_API_KEY),
+            insecure: try_get::<bool>(section, INI_INSECURE).unwrap_or(false),
+            ca_cert: try_get(section, INI_CA_CERT),
             headers: headers.clone(),
         };
 

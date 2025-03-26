@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
 
     if cmd_args.verbose() {
         req_args.headers.iter().for_each(|(name, value)| {
-            eprintln!("> {}: {}", name.to_string(), value.to_string());
+            eprintln!("> {}: {}", name, value);
         });
         eprintln!("> {} {}", req_args.method(), req_args.url());
     }
@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
     if cmd_args.verbose() {
         eprintln!("> status: {}", res.status());
         res.headers().iter().for_each(|(name, value)| {
-            eprintln!("> {}: {}", name.to_string(), value.to_str().unwrap());
+            eprintln!("> {}: {}", name, value.to_str().unwrap());
         });
     }
 
@@ -59,9 +59,9 @@ fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs> {
     let api_key = cmd_args.api_key().or(prof_ref.and_then(|p| p.api_key()));
     let ca_certs = cmd_args.ca_cert().or(prof_ref.and_then(|p| p.ca_cert()));
     let insecure =
-        cmd_args.insecure() || prof_ref.and_then(|p| Some(p.insecure())).unwrap_or(false);
+        cmd_args.insecure() || prof_ref.map(|p| p.insecure()).unwrap_or(false);
     let headers = merge_headers(
-        prof_ref.and_then(|p| Some(p.headers.clone())),
+        prof_ref.map(|p| p.headers.clone()),
         cmd_args.headers(),
     );
     let body_text = read_stdin()?.or(cmd_args.text().map(|s| s.to_string()));

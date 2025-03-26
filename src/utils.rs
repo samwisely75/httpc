@@ -15,7 +15,7 @@ pub fn read_stdin() -> Result<Option<String>> {
 
 pub fn ask_string(i: &Stdin, msg: &str) -> Result<String> {
     loop {
-        if msg.len() > 0 {
+        if !msg.is_empty() {
             eprint!("{}", msg);
         }
 
@@ -23,7 +23,7 @@ pub fn ask_string(i: &Stdin, msg: &str) -> Result<String> {
         i.read_line(&mut buffer)?;
         buffer.pop(); // remove last \n
 
-        if buffer.len() > 0 {
+        if !buffer.is_empty() {
             return Ok(buffer);
         }
     }
