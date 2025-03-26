@@ -1,7 +1,8 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use flate2::read::{DeflateDecoder, GzDecoder};
-use reqwest::{Client,
-    header::{HeaderMap, HeaderName, HeaderValue}, Certificate, Method, StatusCode
+use reqwest::{
+    Certificate, Client, Method, StatusCode,
+    header::{HeaderMap, HeaderName, HeaderValue},
 };
 use std::{
     collections::HashMap,
@@ -16,7 +17,6 @@ const ENC_NONE: &str = "plaintext";
 const ENC_GZIP: &str = "gzip";
 const ENC_DEFLATE: &str = "deflate";
 const ENC_ZSTD: &str = "zstd";
-
 
 #[derive(Debug)]
 pub struct RequestArgs {
@@ -247,12 +247,18 @@ mod test {
 
     #[test]
     fn test_get_request_headers() -> Result<()> {
-        let mut headers= HashMap::new();
+        let mut headers = HashMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
         headers.insert("User-Agent".to_string(), DEFAULT_USER_AGENT.to_string());
         headers.insert("Accept".to_string(), DEFAULT_ACCEPT.to_string());
-        headers.insert("Accept-Encoding".to_string(), DEFAULT_ACCEPT_ENC.to_string());
-        headers.insert("Accept-Language".to_string(), DEFAULT_ACCEPT_LANG.to_string());
+        headers.insert(
+            "Accept-Encoding".to_string(),
+            DEFAULT_ACCEPT_ENC.to_string(),
+        );
+        headers.insert(
+            "Accept-Language".to_string(),
+            DEFAULT_ACCEPT_LANG.to_string(),
+        );
 
         let args = RequestArgs {
             method: "GET".to_string(),

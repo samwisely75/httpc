@@ -32,6 +32,12 @@ pub struct CommandLineArgs {
         default_value = "false"
     )]
     verbose: bool,
+    #[clap(
+        short = 'H',
+        long = "header",
+        help = "HTTP header to send with the request"
+    )]
+    headers: Vec<String>,
 }
 
 impl CommandLineArgs {
@@ -83,6 +89,10 @@ impl CommandLineArgs {
     pub fn verbose(&self) -> bool {
         self.verbose
     }
+
+    pub fn headers(&self) -> Vec<String> {
+        self.headers.clone()
+    }
 }
 
 #[cfg(test)]
@@ -97,7 +107,8 @@ mod test {
     const TEST_PASSWORD: &str = "password";
     const TEST_CA_CERT: &str = "/path/to/ca_cert.pem";
     const TEST_INSECURE: bool = true;
-
+    const TEST_HEADER_CONTENT_TYPE: &str = "Content-Type: application/json";
+    const TEST_HEADER_USER_AGENT: &str = "User-Agent: wiq/0.0.1-SNAPSHOT";
     #[test]
     fn test_cli() {
         use clap::CommandFactory;
@@ -120,6 +131,10 @@ mod test {
             "-r",
             TEST_CA_CERT,
             "-k",
+            "-H",
+            TEST_HEADER_CONTENT_TYPE,
+            "-H",
+            TEST_HEADER_USER_AGENT,
         ];
         let args = CommandLineArgs::parse_from(params.iter());
 
@@ -131,5 +146,9 @@ mod test {
         assert_eq!(args.password, Some(TEST_PASSWORD.to_string()));
         assert_eq!(args.ca_cert, Some(TEST_CA_CERT.to_string()));
         assert_eq!(args.insecure, TEST_INSECURE);
+
+        assert_eq!(args.headers.len(), 2);
+        assert_eq!(args.headers[0], TEST_HEADER_CONTENT_TYPE);
+        assert_eq!(args.headers[1], TEST_HEADER_USER_AGENT);
     }
 }

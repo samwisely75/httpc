@@ -42,21 +42,7 @@ async fn main() -> Result<()> {
 
 fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs> {
     let cmd_url = cmd_args.url();
-    let profile_name = cmd_args.profile();
-
-    let no_valid_url = profile_name == DEFAULT_INI_SECTION
-        && !IniFile::profile_exists(DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION)
-        && !cmd_args.url().starts_with("http");
-
-    let profile = if no_valid_url {
-        eprintln!("Let's create a default profile now.");
-        let p = IniFile::ask_profile()?;
-        IniFile::add_profile(DEFAULT_INI_FILE_PATH, &profile_name, &p)?;
-        Some(p)
-    } else {
-        IniFile::load_profile(DEFAULT_INI_FILE_PATH, profile_name.as_str())?
-    };
-
+    let profile = get_or_create_profile(cmd_args)?;
     let prof_ref = profile.as_ref();
 
     let url = if cmd_url.starts_with("http") {
@@ -74,9 +60,10 @@ fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs> {
     let ca_certs = cmd_args.ca_cert().or(prof_ref.and_then(|p| p.ca_cert()));
     let insecure =
         cmd_args.insecure() || prof_ref.and_then(|p| Some(p.insecure())).unwrap_or(false);
-    let headers = profile
-        .and_then(|p| Some(p.headers))
-        .unwrap_or(HashMap::new());
+    let headers = merge_headers(
+        prof_ref.and_then(|p| Some(p.headers.clone())),
+        cmd_args.headers(),
+    );
     let body_text = read_stdin()?.or(cmd_args.text().map(|s| s.to_string()));
     let req_args = RequestArgs::new(
         cmd_args.method(),
@@ -90,4 +77,69 @@ fn get_request_args(cmd_args: &CommandLineArgs) -> Result<RequestArgs> {
         headers,
     );
     Ok(req_args)
+}
+
+fn get_or_create_profile(cmd_args: &CommandLineArgs) -> Result<Option<profile::Profile>> {
+    let profile_name = cmd_args.profile();
+    let cmd_url = cmd_args.url();
+    let no_valid_url = profile_name == DEFAULT_INI_SECTION
+        && !IniFile::profile_exists(DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION)
+        && !cmd_url.starts_with("http");
+
+    let profile = if no_valid_url {
+        eprintln!("Let's create a default profile now.");
+        let p = IniFile::ask_profile()?;
+        IniFile::add_profile(DEFAULT_INI_FILE_PATH, &profile_name, &p)?;
+        Some(p)
+    } else {
+        IniFile::load_profile(DEFAULT_INI_FILE_PATH, profile_name.as_str())?
+    };
+    Ok(profile)
+}
+
+fn merge_headers(
+    prof_headers: Option<HashMap<String, String>>,
+    cmd_headers: Vec<String>,
+) -> HashMap<String, String> {
+    let cmd_headers_trans = cmd_headers
+        .iter()
+        .map(|h| {
+            let mut parts = h.split(':');
+            (
+                parts.next().unwrap().trim().to_string(),
+                parts.next().unwrap().trim().to_string(),
+            )
+        })
+        .collect::<HashMap<String, String>>();
+    let headers = prof_headers
+        .unwrap_or(HashMap::new())
+        .into_iter()
+        .chain(cmd_headers_trans)
+        .collect();
+    dbg!(&headers);
+    headers
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_merge_headers() {
+        let prof_headers = Some(
+            vec![("Accept", "*/*"), ("Content-Type", "application/json")]
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+        );
+        let cmd_headers = vec!["Authorization: Bearer 1234", "Content-Type: text/plain"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let headers = merge_headers(prof_headers, cmd_headers);
+        assert_eq!(headers.len(), 3);
+        assert_eq!(headers.get("Accept").unwrap(), "*/*");
+        assert_eq!(headers.get("Content-Type").unwrap(), "text/plain");
+        assert_eq!(headers.get("Authorization").unwrap(), "Bearer 1234");
+    }
 }

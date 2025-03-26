@@ -108,8 +108,6 @@ impl IniFile {
             }
         }
 
-        dbg!(headers.clone());
-        
         fn try_get<T>(section: &Properties, key: &str) -> Option<T>
         where
             T: std::str::FromStr,
@@ -144,8 +142,7 @@ impl IniFile {
         } else {
             None
         };
-        let api_key = if user.is_none() && ask_binary(&i, "Or do you use an API key? [y/N]: ")?
-        {
+        let api_key = if user.is_none() && ask_binary(&i, "Or do you use an API key? [y/N]: ")? {
             Some(ask_string(&i, "API key: ")?)
         } else {
             None
@@ -271,10 +268,7 @@ mod tests {
             profile.headers["Content-Type"],
             TEST_CONTENT_TYPE.to_string()
         );
-        assert_eq!(
-            profile.headers["User-Agent"],
-            TEST_USER_AGENT.to_string()
-        );
+        assert_eq!(profile.headers["User-Agent"], TEST_USER_AGENT.to_string());
 
         Ok(profile)
     }
