@@ -24,26 +24,6 @@ pub struct Profile {
 }
 
 impl Profile {
-    pub fn new(
-        host: Option<String>,
-        user: Option<String>,
-        password: Option<String>,
-        api_key: Option<String>,
-        insecure: bool,
-        ca_cert: Option<String>,
-        headers: HashMap<String, String>,
-    ) -> Self {
-        Profile {
-            host,
-            user,
-            password,
-            api_key,
-            insecure,
-            ca_cert,
-            headers: headers,
-        }
-    }
-
     pub fn host(&self) -> Option<String> {
         if self.host.is_some() && self.host.clone().unwrap().ends_with("/") {
             let mut h = self.host.clone().unwrap();
@@ -101,10 +81,9 @@ impl IniFile {
 
         let mut headers = HashMap::new();
         for (key, value) in section.iter() {
-            if key.starts_with("@") {
-                let k = key[1..].to_string();
-                let v = value.to_string();
-                headers.insert(k, v);
+            // pick up header entries only
+            if let Some(stripped) = key.strip_prefix("@") {
+                headers.insert(stripped.to_string(), value.to_string());
             }
         }
 
@@ -157,15 +136,15 @@ impl IniFile {
             None
         };
 
-        Ok(Profile::new(
-            Some(host),
+        Ok(Profile {
+            host: Some(host),
             user,
             password,
             api_key,
-            false,
+            insecure: false,
             ca_cert,
-            HashMap::new(),
-        ))
+            headers: HashMap::new(),
+        })
     }
 
     pub fn add_profile(file_path: &str, name: &str, profile: &Profile) -> Result<()> {

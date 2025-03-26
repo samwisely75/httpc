@@ -9,7 +9,6 @@ use std::{
     io::Read,
     str::{self, FromStr},
 };
-use zstd;
 
 use crate::utils::Result;
 
@@ -89,7 +88,7 @@ pub struct Response {
 
 impl Response {
     pub fn status(&self) -> StatusCode {
-        self.status.clone()
+        self.status
     }
 
     pub fn body(&self) -> &str {
@@ -131,8 +130,8 @@ pub async fn send_request(args: &RequestArgs) -> Result<Response> {
     };
 
     Ok(Response {
-        status: status,
-        headers: headers,
+        status,
+        headers,
         body: body_str,
     })
 }

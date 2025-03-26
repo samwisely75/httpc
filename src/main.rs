@@ -112,7 +112,7 @@ fn merge_headers(
         })
         .collect::<HashMap<String, String>>();
     let headers = prof_headers
-        .unwrap_or(HashMap::new())
+        .unwrap_or_default()
         .into_iter()
         .chain(cmd_headers_trans)
         .collect();
