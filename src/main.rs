@@ -4,6 +4,7 @@ mod profile;
 mod utils;
 
 use args::CommandLineArgs;
+use clap::Parser;
 use http::{RequestArgs, send_request};
 use profile::{DEFAULT_INI_FILE_PATH, DEFAULT_INI_SECTION, IniFile};
 use reqwest::StatusCode;
@@ -12,7 +13,7 @@ use utils::{Result, read_stdin};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cmd_args = CommandLineArgs::get();
+    let cmd_args = CommandLineArgs::parse();
     let req_args = get_request_args(&cmd_args)?;
 
     if cmd_args.verbose() {

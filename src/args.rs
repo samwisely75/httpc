@@ -41,10 +41,6 @@ pub struct CommandLineArgs {
 }
 
 impl CommandLineArgs {
-    pub fn get() -> Self {
-        CommandLineArgs::parse()
-    }
-
     pub fn method(&self) -> String {
         self.method.clone()
     }
