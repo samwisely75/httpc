@@ -110,10 +110,10 @@ Entities start with `@` will be treated as HTTP headers. You can specify multipl
 ## Enhancement Plan
 
 - [x] Remove `--stdin` parameter
+- [x] Support multiple headers in command line options
 - [ ] Support proxy
 - [ ] Support client certificate authentication
-- [ ] Support multiple headers in command line options
-- [ ] Support binary send
+- [ ] Support binary data send
 - [ ] Support multi-form post
 - [ ] REPL capability
 
