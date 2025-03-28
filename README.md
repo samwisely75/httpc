@@ -6,7 +6,7 @@ A light-weight profile-based HTTP client allows you to talk to web servers with 
 
 ## Usage
 
-#### Basics
+### Basics
 
 The simplest usage is to run the following command in your terminal: 
 
@@ -24,7 +24,7 @@ wiq PUT _cluster/settings '{
 }'
 ```
 
-#### Use Standard Input
+### Use Standard Input
 
 You can also pass a request body via standard input: 
 
@@ -40,10 +40,10 @@ echo '{
 }' \
 | wiq GET my-index/_search \
 | jq -r '.hits.hits[] | [ ._id, ._source.name ] | @tsv' \
-| column -t
+| sed -e "s/\t/ /g"
 ```
 
-#### Switch Connection via Profile
+### Switch Connection via Profile
 
 The commands above are using `default` profile in your `~/.wiq`, a configuration file that contains the base url (e.g. `https://my-remote-server:9200`), user, password, and other parameters. You can switch the context by specifying another profile name in `--profile` (or `-p`). 
 
@@ -52,7 +52,7 @@ wiq -p my-dev-cluster GET /_cluster/settings
 wiq -p cust-qa-cluster GET /_cluster/settings
 ```
 
-#### Override/Aurgment Configurations
+### Override/Aurgment Configurations
 
  You can run the command without configuring `~/.wiq` by providing a URL starts with `http://` or `https://` directly into the `URL` like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration.
 
@@ -114,6 +114,7 @@ The entities start with `@` will be treated as HTTP headers. You can specify mul
 
 - [x] Remove `--stdin` parameter
 - [x] Support multiple headers in command line options
+- [ ] Introduce blank profile
 - [ ] Support proxy
 - [ ] Support client certificate authentication
 - [ ] Support binary data send
