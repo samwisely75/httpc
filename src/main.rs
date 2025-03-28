@@ -30,21 +30,23 @@ async fn main() -> Result<()> {
     dbg!(&req_args);
 
     if cmd_args.verbose() {
-        eprintln!("> request method: {}", req_args.method().unwrap());
-        eprintln!("> request url: {}", req_args.url().unwrap());
-        eprintln!("> request headers:");
+        eprintln!("> request:");
+        eprintln!(">   method: {}", req_args.method().unwrap());
+        eprintln!(">   url: {}", req_args.url().unwrap());
+        eprintln!(">   headers:");
         req_args.headers().iter().for_each(|(name, value)| {
-            eprintln!(">> {name}: {value}");
+            eprintln!(">    {name}: {value}");
         });
     }
 
     let res = HttpClient::request(&req_args).await?;
 
     if cmd_args.verbose() {
-        eprintln!("\n> response status: {}", res.status());
-        eprintln!("> response headers:");
+        eprintln!("> response:");
+        eprintln!(">   status: {}", res.status());
+        eprintln!(">   headers:");
         res.headers().iter().for_each(|(name, value)| {
-            eprintln!(">> {}: {}", name, value.to_str().unwrap());
+            eprintln!(">     {}: {}", name, value.to_str().unwrap());
         });
     }
 
