@@ -15,7 +15,7 @@ const DEFAULT_METHOD: &str = "GET";
 pub struct Url {
     scheme: Option<String>,
     host: Option<String>,
-    port: Option<String>,
+    port: Option<u16>,
     path: Option<String>,
     query: Option<String>,
 }
@@ -28,7 +28,7 @@ impl Url {
         let url = Url {
             scheme: caps.name("scheme").map(|m| m.as_str().to_string()),
             host: caps.name("host").map(|m| m.as_str().to_string()),
-            port: caps.name("port").map(|m| m.as_str().to_string()),
+            port: caps.name("port").map(|m| m.as_str().parse::<u16>().unwrap()),
             path: caps.name("path").map(|m| m.as_str().to_string()),
             query: caps.name("query").map(|m| m.as_str().to_string()),
         };
@@ -52,6 +52,30 @@ impl Url {
             self.query = other.query.clone();
         }
         self
+    }
+
+    pub fn scheme(&self) -> Option<&String> {
+        self.scheme.as_ref()
+    }
+
+    #[allow(dead_code)]
+    pub fn host(&self) -> Option<&String> {
+        self.host.as_ref()   
+    }
+
+    #[allow(dead_code)]
+    pub fn port(&self) -> Option<&u16> {
+        self.port.as_ref()
+    }
+
+    #[allow(dead_code)]
+    pub fn path(&self) -> Option<&String> {
+        self.path.as_ref()
+    }
+
+    #[allow(dead_code)]
+    pub fn query(&self) -> Option<&String> {
+        self.query.as_ref()
     }
 }
 
@@ -331,7 +355,7 @@ mod test {
         let url = Url::parse("http://example.com:8080/path/to/resource?query=string");
         assert_eq!(url.scheme, Some("http".to_string()));
         assert_eq!(url.host, Some("example.com".to_string()));
-        assert_eq!(url.port, Some("8080".to_string()));
+        assert_eq!(url.port, Some(8080));
         assert_eq!(url.path, Some("/path/to/resource".to_string()));
         assert_eq!(url.query, Some("query=string".to_string()));
     }
@@ -353,7 +377,7 @@ mod test {
         url.merge(&url2);
         assert_eq!(url.scheme, Some("https".to_string()));
         assert_eq!(url.host, Some("example.com".to_string()));
-        assert_eq!(url.port, Some("9999".to_string()));
+        assert_eq!(url.port, Some(9999));
         assert_eq!(url.path, Some("/path/to/resource".to_string()));
         assert_eq!(url.query, Some("query=string".to_string()));
     }

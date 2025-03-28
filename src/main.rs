@@ -14,9 +14,10 @@ use utils::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cmd_args = CommandLineArgs::parse();
-    let ini_args = IniFileArgs::load(DEFAULT_INI_FILE_PATH, &cmd_args.profile())?;
     let stdin_args = StdinArgs::new(&mut std::io::stdin())?;
+    let cmd_args = CommandLineArgs::parse();
+    let url_starts_with_http = cmd_args.url().map(|url| url.scheme().unwrap_or(&"".to_string()).starts_with("http")).unwrap_or(false);
+    let ini_args = if url_starts_with_http { None } else { IniFileArgs::load(DEFAULT_INI_FILE_PATH, &cmd_args.profile())? };
 
     let req_args: HttpRequest = if let Some(ini) = ini_args {
         // stdin > command line > ini
@@ -29,22 +30,21 @@ async fn main() -> Result<()> {
     dbg!(&req_args);
 
     if cmd_args.verbose() {
+        eprintln!("> request method: {}", req_args.method().unwrap());
+        eprintln!("> request url: {}", req_args.url().unwrap());
+        eprintln!("> request headers:");
         req_args.headers().iter().for_each(|(name, value)| {
-            eprintln!("> {name}: {value}");
+            eprintln!(">> {name}: {value}");
         });
-        eprintln!(
-            "> {} {}",
-            req_args.method().unwrap(),
-            req_args.url().unwrap()
-        );
     }
 
     let res = HttpClient::request(&req_args).await?;
 
     if cmd_args.verbose() {
-        eprintln!("> status: {}", res.status());
+        eprintln!("\n> response status: {}", res.status());
+        eprintln!("> response headers:");
         res.headers().iter().for_each(|(name, value)| {
-            eprintln!("> {}: {}", name, value.to_str().unwrap());
+            eprintln!(">> {}: {}", name, value.to_str().unwrap());
         });
     }
 
