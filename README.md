@@ -52,8 +52,6 @@ wiq -p my-dev-cluster GET /_cluster/settings
 wiq -p cust-qa-cluster GET /_cluster/settings
 ```
 
-If you don't have a `default` profile, it'll ask you to create one.  
-
 #### Override/Aurgment Configurations
 
  You can run the command without configuring `~/.wiq` by providing a URL starts with `http://` or `https://` directly into the `URL` like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration.
@@ -85,7 +83,7 @@ For all available command line options, run `wiq -h` or `wiq --help`.
 
 1. Download the binary in releases according to your platform.
 1. Expand .tar.gz and copy `wiq` to where `$PATH` is thru (e.g. `/usr/local/bin`)
-1. Run `wiq -h` to test it.
+1. Run `wiq --help` to test it.
 
 ## Configuration
 
@@ -103,9 +101,14 @@ ca_cert = /path/to/ca.pem
 @accept = */*
 @accept-encoding = gzip, deflate
 @accept-langugage = en-US,en;q=0.9
+
+[local]
+host = http://localhost:9200
+user = elastic
+password = changeme
 ```
 
-Entities start with `@` will be treated as HTTP headers. You can specify multiple headers by adding more keys with the same prefix. 
+The entities start with `@` will be treated as HTTP headers. You can specify multiple headers by adding more keys with the same prefix. 
 
 ## Enhancement Plan
 
@@ -115,13 +118,14 @@ Entities start with `@` will be treated as HTTP headers. You can specify multipl
 - [ ] Support client certificate authentication
 - [ ] Support binary data send
 - [ ] Support multi-form post
-- [ ] REPL capability
+- [ ] REPL capability with cookie support
+- [ ] Beautify JSON output
 
 ## Motivation
 
-I am a consultant at Elasticsearch and I talk to Elasticsearch every day. Kibana Dev Tools is the primary option, however on the field of consulting it's not always available. 
+I am a consultant and I talk to Elasticsearch every day. Kibana Dev Tools is the primary option, however on the consulting field it's not always available. 
 
-`curl` works great for that needs, but one thing I don't like it is to provide all static parameters such as `-u elastic:password` and `-H "content-type: application/json"` every time I query the node. The scheme defintion, host name, and port number in the URL are redundant too. 
+`curl` works great in that situation, however providing same parameters such as `-u elastic:password` and `-H "content-type: application/json"` every time I query the node is painful. The scheme defintion, host name, and port number in the URL are redundant too. 
 
 In Kibana Dev Tools you can say:
 
@@ -133,12 +137,12 @@ which in `curl` becomes like:
 curl -XGET \
      -u "elastic:password" \
      -H "content-type: application/json" \
-     --url https://prod-cluster.es.us-central1.gcp.cloud.es.io/_cat/indices?v
+     https://prod-cluster.es.us-central1.gcp.cloud.es.io/_cat/indices?v
 ```
 
-This is painful even for a command-line maniac like me. 
+I wanted to bring the simplicity of Kibana Dev Tools to `curl` and `httpie` users.
 
-I know Python does the job and I've been there. The problem is that the source code will soon become lengthy and difficult to maintain in a single file, so you will need to carry around multiple files to make it run. You also need `requests` library to be installed, which is hassle for the vintage OSs do not have pip at the start. This isn't cool.
+I know Python does the job and I've been there. The problem is that the source code will soon become lengthy and difficult to maintain in a single file, so you will need to carry around multiple files to make it work. You also need `requests` library to be installed, which is hassle for the vintage OSs do not have `pip` at the start. This isn't cool.
 
 ## Contribution
 
