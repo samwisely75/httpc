@@ -1,75 +1,76 @@
-use crate::utils::{Result, ask_binary, ask_path, ask_string};
+use crate::http::{RequestArgs, Url};
+use crate::stdio::{ask_binary, ask_path, ask_string};
+use crate::utils::Result;
+
 use ini::{Ini, Properties};
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 
 pub const DEFAULT_INI_FILE_PATH: &str = "~/.wiq";
-pub const DEFAULT_INI_SECTION: &str = "default";
 
 const INI_HOST: &str = "host";
 const INI_USER: &str = "user";
 const INI_PASSWORD: &str = "password";
-const INI_API_KEY: &str = "api_key";
 const INI_CA_CERT: &str = "ca_cert";
 const INI_INSECURE: &str = "insecure";
 
 #[derive(Debug)]
-pub struct Profile {
-    host: Option<String>,
+pub struct IniFileArgs {
+    url: Option<Url>,
     user: Option<String>,
     password: Option<String>,
-    api_key: Option<String>,
     insecure: bool,
     ca_cert: Option<String>,
-    pub headers: HashMap<String, String>,
+    headers: HashMap<String, String>,
 }
 
-impl Profile {
-    pub fn host(&self) -> Option<String> {
-        if self.host.is_some() && self.host.clone().unwrap().ends_with("/") {
-            let mut h = self.host.clone().unwrap();
-            h.pop();
-            Some(h)
-        } else {
-            self.host.clone()
-        }
+impl RequestArgs for IniFileArgs {
+    fn user(&self) -> Option<&String> {
+        self.user.as_ref()
     }
 
-    pub fn user(&self) -> Option<String> {
-        self.user.clone()
+    fn password(&self) -> Option<&String> {
+        self.password.as_ref()
     }
 
-    pub fn password(&self) -> Option<String> {
-        self.password.clone()
-    }
-
-    pub fn api_key(&self) -> Option<String> {
-        self.api_key.clone()
-    }
-
-    pub fn insecure(&self) -> bool {
+    fn insecure(&self) -> bool {
         self.insecure
     }
 
-    pub fn ca_cert(&self) -> Option<String> {
-        self.ca_cert.clone()
+    fn ca_cert(&self) -> Option<&String> {
+        self.ca_cert.as_ref()
+    }
+
+    fn method(&self) -> Option<&String> {
+        None
+    }
+
+    fn url(&self) -> Option<&Url> {
+        self.url.as_ref()
+    }
+
+    fn body(&self) -> Option<&String> {
+        None
+    }
+
+    fn headers(&self) -> &HashMap<String, String> {
+        &self.headers
     }
 }
 
-pub struct IniFile;
-
-impl IniFile {
-    pub fn profile_exists(file_path: &str, name: &str) -> bool {
+impl IniFileArgs {
+    #[allow(dead_code)]
+    pub fn exists(file_path: &str, name: &str) -> bool {
         let extended_path = shellexpand::tilde(file_path).to_string();
-        if !Path::new(&extended_path).exists() {
+        if !std::path::Path::new(&extended_path).exists() {
             return false;
         }
         let ini = Ini::load_from_file(extended_path).unwrap();
         ini.section(Some(name)).is_some()
     }
 
-    pub fn load_profile(file_path: &str, name: &str) -> Result<Option<Profile>> {
+    pub fn load(file_path: &str, name: &str) -> Result<Option<IniFileArgs>> {
         let extended_path = shellexpand::tilde(file_path).to_string();
-        if !Path::new(&extended_path).exists() {
+        if !std::path::Path::new(&extended_path).exists() {
             dbg!("file not found: {}", &extended_path);
             return Ok(None);
         }
@@ -79,7 +80,7 @@ impl IniFile {
             None => return Ok(None),
         };
 
-        let mut headers = HashMap::new();
+        let mut headers = HashMap::<String, String>::new();
         for (key, value) in section.iter() {
             // pick up header entries only
             if let Some(stripped) = key.strip_prefix("@") {
@@ -95,11 +96,15 @@ impl IniFile {
             section.get(key).map(|s| s.parse::<T>().unwrap())
         }
 
-        let profile = Profile {
-            host: try_get(section, INI_HOST),
+        let url = match try_get::<String>(section, INI_HOST) {
+            Some(s) => Some(Url::parse(&s)),
+            None => None,
+        };
+
+        let profile = IniFileArgs {
+            url: url,
             user: try_get(section, INI_USER),
             password: try_get(section, INI_PASSWORD),
-            api_key: try_get(section, INI_API_KEY),
             insecure: try_get::<bool>(section, INI_INSECURE).unwrap_or(false),
             ca_cert: try_get(section, INI_CA_CERT),
             headers: headers.clone(),
@@ -108,9 +113,10 @@ impl IniFile {
         Ok(Some(profile))
     }
 
-    pub fn ask_profile() -> Result<Profile> {
+    #[allow(dead_code)]
+    pub fn ask() -> Result<IniFileArgs> {
         let i = std::io::stdin();
-        let host = ask_string(&i, "host: ")?;
+        let url = ask_string(&i, "host: ")?;
         let user = if ask_binary(&i, "Do you need a user/password for this URL? [y/N]: ")? {
             Some(ask_string(&i, "user: ")?)
         } else {
@@ -121,13 +127,8 @@ impl IniFile {
         } else {
             None
         };
-        let api_key = if user.is_none() && ask_binary(&i, "Or do you use an API key? [y/N]: ")? {
-            Some(ask_string(&i, "API key: ")?)
-        } else {
-            None
-        };
 
-        let ca_cert = if host.starts_with("https")
+        let ca_cert = if url.starts_with("https")
             && ask_binary(&i, "Do you need to use a custom CA certificate? [y/N]: ")?
         {
             let path = ask_path(&i, "CA certificate file: ")?;
@@ -136,33 +137,30 @@ impl IniFile {
             None
         };
 
-        Ok(Profile {
-            host: Some(host),
+        Ok(IniFileArgs {
+            url: Some(Url::parse(&url)),
             user,
             password,
-            api_key,
             insecure: false,
             ca_cert,
             headers: HashMap::new(),
         })
     }
 
-    pub fn add_profile(file_path: &str, name: &str, profile: &Profile) -> Result<()> {
+    #[allow(dead_code)]
+    pub fn put(file_path: &str, name: &str, profile: &IniFileArgs) -> Result<()> {
         let mut conf = Ini::new();
         let sect_name = Some(name.to_string());
         let mut sect = conf.with_section(sect_name);
 
-        if profile.host().is_some() {
-            sect.set(INI_HOST, profile.host().unwrap());
+        if profile.url().is_some() {
+            sect.set(INI_HOST, profile.url().unwrap().to_string());
         }
         if profile.user().is_some() {
             sect.set(INI_USER, profile.user().unwrap());
         }
         if profile.password().is_some() {
             sect.set(INI_PASSWORD, profile.password().unwrap());
-        }
-        if profile.api_key().is_some() {
-            sect.set(INI_API_KEY, profile.api_key().unwrap());
         }
         sect.set(INI_INSECURE, profile.insecure().to_string());
 
@@ -195,6 +193,7 @@ mod tests {
     const TEST_API_KEY: &str = "ABCDE";
     const TEST_CONTENT_TYPE: &str = "application/json";
     const TEST_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+    const DEFAULT_INI_SECTION: &str = "default";
 
     fn create_ini_file() -> Result<TempPath> {
         let content = format!(
@@ -226,20 +225,22 @@ mod tests {
 
     fn delete_ini_file(file_path: &str) -> Result<()> {
         let path = shellexpand::tilde(file_path).to_string();
-        if Path::new(&path).exists() {
+        if std::path::Path::new(&path).exists() {
             remove_file(path)?;
         }
         Ok(())
     }
 
-    fn test_profile(path: &str) -> Result<Profile> {
-        let profile = IniFile::load_profile(&path, DEFAULT_INI_SECTION)?.unwrap();
+    fn test_profile(path: &str) -> Result<IniFileArgs> {
+        let profile = IniFileArgs::load(&path, DEFAULT_INI_SECTION)?.unwrap();
 
-        assert_eq!(profile.host(), Some(TEST_SERVER.to_string()));
-        assert_eq!(profile.user(), Some(TEST_USER.to_string()));
-        assert_eq!(profile.password(), Some(TEST_PASSWORD.to_string()));
-        assert_eq!(profile.ca_cert(), Some(TEST_CA_CERT.to_string()));
-        assert_eq!(profile.api_key(), Some(TEST_API_KEY.to_string()));
+        assert_eq!(
+            profile.url().map(|u| u.to_string()),
+            Some(TEST_SERVER.to_string())
+        );
+        assert_eq!(profile.user(), Some(&TEST_USER.to_string()));
+        assert_eq!(profile.password(), Some(&TEST_PASSWORD.to_string()));
+        assert_eq!(profile.ca_cert(), Some(&TEST_CA_CERT.to_string()));
         assert_eq!(profile.insecure(), false);
 
         assert_eq!(profile.headers.len(), 2);
@@ -267,11 +268,10 @@ mod tests {
         headers.insert("Content-Type".to_string(), TEST_CONTENT_TYPE.to_string());
         headers.insert("User-Agent".to_string(), TEST_USER_AGENT.to_string());
 
-        let profile = Profile {
-            host: Some(TEST_SERVER.to_string()),
+        let profile = IniFileArgs {
+            url: Some(Url::parse(TEST_SERVER)),
             user: Some(TEST_USER.to_string()),
             password: Some(TEST_PASSWORD.to_string()),
-            api_key: Some(TEST_API_KEY.to_string()),
             insecure: false,
             ca_cert: Some(TEST_CA_CERT.to_string()),
             headers: headers,
@@ -279,7 +279,7 @@ mod tests {
         let temp_file = NamedTempFile::new()?;
         let path = temp_file.path().to_str().unwrap().to_string();
 
-        let _ = IniFile::add_profile(&path, DEFAULT_INI_SECTION, &profile)?;
+        let _ = IniFileArgs::put(&path, DEFAULT_INI_SECTION, &profile)?;
         let _ = test_profile(&path)?;
         let _ = delete_ini_file(&path)?;
 
