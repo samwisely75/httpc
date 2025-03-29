@@ -1,27 +1,37 @@
-mod http;
 mod cmd;
 mod encoder;
+mod http;
 mod ini;
-mod utils;
 mod stdio;
+mod utils;
 
-use http::{HttpClient, HttpRequest, RequestArgs};
 use cmd::CommandLineArgs;
+use http::{HttpClient, HttpRequest, RequestArgs};
 use ini::{DEFAULT_INI_FILE_PATH, IniFileArgs};
-use stdio::StdinArgs;
 use reqwest::StatusCode;
+use stdio::StdinArgs;
 use utils::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let stdin_args = StdinArgs::new(&mut std::io::stdin())?;
     let cmd_args = CommandLineArgs::parse();
-    let url_starts_with_http = cmd_args.url().map(|url| url.scheme().unwrap_or(&"".to_string()).starts_with("http")).unwrap_or(false);
-    let ini_args = if url_starts_with_http { None } else { IniFileArgs::load(DEFAULT_INI_FILE_PATH, &cmd_args.profile())? };
+    let url_starts_with_http = cmd_args
+        .url()
+        .map(|url| url.scheme().unwrap_or(&"".to_string()).starts_with("http"))
+        .unwrap_or(false);
+    let ini_args = if url_starts_with_http {
+        None
+    } else {
+        IniFileArgs::load(DEFAULT_INI_FILE_PATH, &cmd_args.profile())?
+    };
 
     let req_args: HttpRequest = if let Some(ini) = ini_args {
         // stdin > command line > ini
-        HttpRequest::from(&ini).merge(&cmd_args).merge(&stdin_args).clone()
+        HttpRequest::from(&ini)
+            .merge(&cmd_args)
+            .merge(&stdin_args)
+            .clone()
     } else {
         // stdin > command line
         HttpRequest::from(&cmd_args).merge(&stdin_args).clone()

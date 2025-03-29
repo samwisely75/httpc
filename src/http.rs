@@ -28,7 +28,9 @@ impl Url {
         let url = Url {
             scheme: caps.name("scheme").map(|m| m.as_str().to_string()),
             host: caps.name("host").map(|m| m.as_str().to_string()),
-            port: caps.name("port").map(|m| m.as_str().parse::<u16>().unwrap()),
+            port: caps
+                .name("port")
+                .map(|m| m.as_str().parse::<u16>().unwrap()),
             path: caps.name("path").map(|m| m.as_str().to_string()),
             query: caps.name("query").map(|m| m.as_str().to_string()),
         };
@@ -60,7 +62,7 @@ impl Url {
 
     #[allow(dead_code)]
     pub fn host(&self) -> Option<&String> {
-        self.host.as_ref()   
+        self.host.as_ref()
     }
 
     #[allow(dead_code)]

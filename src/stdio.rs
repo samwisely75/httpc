@@ -1,8 +1,8 @@
-use std::io::{Read, Stdin};
-use std::path::Path;
-use std::collections::HashMap;
 use crate::http::RequestArgs;
 use crate::utils::Result;
+use std::collections::HashMap;
+use std::io::{Read, Stdin};
+use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StdinArgs {
@@ -61,7 +61,6 @@ impl RequestArgs for StdinArgs {
     fn headers(&self) -> &HashMap<String, String> {
         &self.headers
     }
-
 }
 
 pub fn ask_string(i: &Stdin, msg: &str) -> Result<String> {
