@@ -1,7 +1,7 @@
 use crate::http::HttpConnectionProfile;
 use crate::stdio::{ask, ask_binary, ask_no_space_string, ask_path};
 use crate::url::Server;
-use crate::utils::{Result, merge_opt};
+use crate::utils::Result;
 
 use ini::{Ini, Properties};
 use std::collections::HashMap;
@@ -56,29 +56,34 @@ impl HttpConnectionProfile for IniProfile {
 }
 
 impl IniProfile {
-    pub fn merge_profile<T>(&self, other: &T) -> Self
+    pub fn merge_profile<T>(&mut self, other: &T) -> &mut Self
     where
-        T: HttpConnectionProfile + std::fmt::Debug,
+        // The reason using Generic is to force Debug trait to 
+        // be implemented for testing purpose.
+        // We can revert it to `impl HttpConnectionProfile` if we
+        // don't need to test it.
+        T: HttpConnectionProfile + std::fmt::Debug, 
     {
-        let server = merge_opt(self.server(), other.server(), |_, o| o);
-        let user = merge_opt(self.user(), other.user(), |_, o| o);
-        let password = merge_opt(self.password(), other.password(), |_, o| o);
-        let ca_cert = merge_opt(self.ca_cert(), other.ca_cert(), |_, o| o);
-        let insecure = merge_opt(self.insecure(), other.insecure(), |_, o| o);
-        let mut headers = self.headers.clone();
-        for (k, v) in other.headers() {
-            headers.insert(k.clone(), v.clone());
+        if other.server().is_some() {
+            self.server = other.server().cloned();
+        }
+        if other.user().is_some() {
+            self.user = other.user().cloned();
+            self.password = other.password().cloned();
+        }
+        if other.insecure().is_some() {
+            self.insecure = other.insecure();
+        }
+        if other.ca_cert().is_some() {
+            self.ca_cert = other.ca_cert().cloned();
+        }
+        if other.headers().len() > 0 {
+            for (k, v) in other.headers() {
+                self.headers.insert(k.clone(), v.clone());
+            }
         }
 
-        IniProfile {
-            name: self.name.clone(),
-            server: server.cloned(),
-            user: user.cloned(),
-            password: password.cloned(),
-            insecure,
-            ca_cert: ca_cert.cloned(),
-            headers: headers.clone(),
-        }
+        self
     }
 }
 
@@ -429,7 +434,7 @@ mod test {
         headers.insert("content-type".to_string(), "application/json".to_string());
         headers.insert("user-agent".to_string(), "Mozilla/5.0".to_string());
 
-        let original = IniProfile {
+        let mut original = IniProfile {
             name: DEFAULT_INI_SECTION.to_string(),
             server: Some(Server::parse(&"https://localhost:8081")?),
             user: None,

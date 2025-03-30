@@ -8,7 +8,7 @@ mod utils;
 
 use cmd::CommandLineArgs;
 use http::{HttpClient, HttpConnectionProfile, HttpRequestArgs, HttpResponse};
-use ini::{ask_new_profile, get_blank_profile, IniProfileStore, DEFAULT_INI_FILE_PATH, PROFILE_BLANK};
+use ini::{get_blank_profile, IniProfileStore, DEFAULT_INI_FILE_PATH};
 use reqwest::StatusCode;
 use stdio::StdinArgs;
 use utils::Result;
@@ -27,21 +27,18 @@ async fn main() -> Result<()> {
 
     // Load profile from INI file by name specified in --profile argument
     // (default to "default")
+    // If the profile is not found, then use a blank profile.
     let profile_name = cmd_args.profile();
     let ini_store = IniProfileStore::new(DEFAULT_INI_FILE_PATH);
-    let profile = ini_store
+    let mut profile = ini_store
         .get_profile(&profile_name)?
-        // If the profile is not found, ask user if he/she wants to create
-        // a new one. If the profile is still not created, then use a
-        // blank profile.
-        .unwrap_or(get_blank_profile())
-        // Merge the command line arguments (e.g. user, password, etc.)
-        // to complete the connection profile. Note the server in ptofile
-        // will be overwritten if a protocol and server is specified in
-        // the command line URL
-        .merge_profile(&cmd_args);
+        .unwrap_or(get_blank_profile());
 
-    dbg!(&profile);
+    // Merge the command line arguments (e.g. user, password, etc.)
+    // to complete the connection profile. Note the server in ptofile
+    // will be overwritten if a protocol and server is specified in
+    // the command line URL
+    profile.merge_profile(&cmd_args);
 
     // Show the connection profile and request details to stderr output
     // if verbose mode is enabled

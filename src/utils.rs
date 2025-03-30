@@ -1,5 +1,6 @@
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+#[allow(dead_code)]
 pub fn merge_opt<T>(o1: Option<T>, o2: Option<T>, merger: fn(T, T) -> T) -> Option<T> {
     match (o1, o2) {
         (Some(p), Some(s)) => Some(merger(p, s)),
