@@ -34,7 +34,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_decode_gzip() {
+    fn decode_gzip_should_return_correct_string() {
         let data = vec![
             31, 139, 8, 0, 0, 0, 0, 0, 0, 255, 43, 73, 45, 46, 137, 55, 52, 50, 6, 0, 21, 191, 53,
             241, 8, 0, 0, 0,
@@ -44,14 +44,14 @@ mod test {
     }
 
     #[test]
-    fn test_decode_deflate() {
+    fn decode_deflate_should_return_correct_string() {
         let data = vec![43, 73, 45, 46, 137, 55, 52, 50, 6, 0];
         let result = decode_deflate(&data).unwrap();
         assert_eq!(result, "test_123");
     }
 
     #[test]
-    fn test_decode_zstd() {
+    fn decode_zstd_should_return_correct_string() {
         let data = vec![
             40, 181, 47, 253, 0, 88, 65, 0, 0, 116, 101, 115, 116, 95, 49, 50, 51,
         ];

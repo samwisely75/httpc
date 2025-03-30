@@ -1,4 +1,7 @@
-use crate::http::RequestArgs;
+use regex::Regex;
+
+use crate::http::HttpRequestArgs;
+use crate::url::UrlPath;
 use crate::utils::Result;
 use std::collections::HashMap;
 use std::io::{Read, Stdin};
@@ -29,12 +32,12 @@ impl StdinArgs {
     }
 }
 
-impl RequestArgs for StdinArgs {
+impl HttpRequestArgs for StdinArgs {
     fn method(&self) -> Option<&String> {
         None
     }
 
-    fn url(&self) -> Option<&crate::http::Url> {
+    fn url_path(&self) -> Option<&UrlPath> {
         None
     }
 
@@ -42,28 +45,18 @@ impl RequestArgs for StdinArgs {
         self.input.as_ref()
     }
 
-    fn user(&self) -> Option<&String> {
-        None
-    }
-
-    fn password(&self) -> Option<&String> {
-        None
-    }
-
-    fn insecure(&self) -> bool {
-        false
-    }
-
-    fn ca_cert(&self) -> Option<&String> {
-        None
-    }
-
     fn headers(&self) -> &HashMap<String, String> {
         &self.headers
     }
 }
 
-pub fn ask_string(i: &Stdin, msg: &str) -> Result<String> {
+pub fn ask<T>(i: &Stdin, msg: &str, acceptable: &str) -> Result<T>
+where
+    T: std::str::FromStr,
+{
+    let re = Regex::new(acceptable)
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid regex"))?;
+
     loop {
         if !msg.is_empty() {
             eprint!("{}", msg);
@@ -73,20 +66,26 @@ pub fn ask_string(i: &Stdin, msg: &str) -> Result<String> {
         i.read_line(&mut buffer)?;
         buffer.pop(); // remove last \n
 
-        if !buffer.is_empty() {
-            return Ok(buffer);
+        if re.is_match(&buffer) {
+            if let Ok(value) = buffer.parse::<T>() {
+                return Ok(value);
+            }
         }
     }
 }
 
+pub fn ask_no_space_string(i: &Stdin, msg: &str) -> Result<String> {
+    ask::<String>(i, msg, r"^[^\s\t]+$")
+}
+
 pub fn ask_binary(i: &Stdin, msg: &str) -> Result<bool> {
-    let buffer = ask_string(i, msg)?;
-    Ok(buffer.to_lowercase() == "y" || buffer.to_lowercase() == "yes")
+    let buffer = ask::<String>(i, msg, r"^[YyNn]$")?;
+    Ok(buffer.to_lowercase() == "y")
 }
 
 pub fn ask_path(i: &Stdin, msg: &str) -> Result<String> {
     loop {
-        let str = ask_string(i, msg)?;
+        let str = ask_no_space_string(i, msg)?;
         let expand_str = shellexpand::tilde(str.as_str()).to_string();
         let expand_path = Path::new(&expand_str);
         if expand_path.exists() {
