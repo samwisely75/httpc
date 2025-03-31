@@ -8,7 +8,7 @@ mod utils;
 
 use cmd::CommandLineArgs;
 use http::{HttpClient, HttpConnectionProfile, HttpRequestArgs, HttpResponse};
-use ini::{get_blank_profile, IniProfileStore, DEFAULT_INI_FILE_PATH};
+use ini::{DEFAULT_INI_FILE_PATH, IniProfileStore, get_blank_profile};
 use reqwest::StatusCode;
 use stdio::StdinArgs;
 use utils::Result;
@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
 
     // Merge the command line arguments (e.g. user, password, etc.)
     // to complete the connection profile. Note the server in ptofile
-    // will be overwritten if a protocol and server is specified in
+    // will be overwritten if a scheme and server is specified in
     // the command line URL
     profile.merge_profile(&cmd_args);
 
@@ -76,20 +76,21 @@ fn print_profile(profile: &impl HttpConnectionProfile) {
             .map(|p| p.to_string())
             .unwrap_or("<none>".to_string())
     );
-    if server.protocol().unwrap() == "https" {
-        eprintln!(">   protocol: TLS");
+    eprintln!(">   scheme: {}", server.scheme().unwrap());
+    if server.scheme().unwrap() == "https" {
         eprintln!(
             ">   ca-cert: {}",
             profile.ca_cert().unwrap_or(&"<none>".to_string())
         );
         eprintln!(">   verify-cert: {}", !profile.insecure().unwrap());
-    } else {
-        eprintln!(">   protocol: HTTP");
-    }
+    } 
 
     if profile.user().is_some() {
         eprintln!(">   user: {}", profile.user().unwrap());
-        eprintln!(">   password: {}", profile.password().map(|_| "<provided>").unwrap_or("<none>"));
+        eprintln!(
+            ">   password: {}",
+            profile.password().map(|_| "<provided>").unwrap_or("<none>")
+        );
     }
 
     eprintln!(">   headers:");

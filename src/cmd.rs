@@ -195,7 +195,11 @@ mod test {
     use super::*;
 
     const TEST_METHOD: &str = "GET";
-    const TEST_URL: &str = "https://example.com";
+    const TEST_HOST: &str = "example.com";
+    const TEST_PORT: u16 = 8001;
+    const TEST_SCHEME: &str = "https";
+    const TEST_URL_PATH: &str = "/path/to/resource";
+    const TEST_QUERY: &str = "query=foo";
     const TEST_BODY: &str = "{ \"query\": { \"match_all\": {} } }";
     const TEST_PROFILE: &str = "default";
     const TEST_USER: &str = "user";
@@ -248,10 +252,14 @@ mod test {
 
     #[test]
     fn cmd_args_parse_should_decompose_values_properly() {
+        let url = format!(
+            "{}://{}:{}{}?{}",
+            TEST_SCHEME, TEST_HOST, TEST_PORT, TEST_URL_PATH, TEST_QUERY
+        );
         let params = vec![
             "http",
             TEST_METHOD,
-            TEST_URL,
+            url.as_str(),
             TEST_BODY,
             "-p",
             TEST_PROFILE,
@@ -267,22 +275,22 @@ mod test {
             "-H",
             TEST_HEADER_USER_AGENT,
         ];
+
         let args = CommandLineArgs::parse_from(params.iter());
         let req: &dyn HttpRequestArgs = &args;
+        let req_url_path = req.url_path().unwrap();
 
         assert_eq!(req.method().unwrap(), TEST_METHOD);
-        assert_eq!(req.url_path().unwrap().to_string(), TEST_URL);
+        assert_eq!(req_url_path.path(), &TEST_URL_PATH.to_string());
+        assert_eq!(req_url_path.query(), Some(&TEST_QUERY.to_string()));
         assert_eq!(req.body().unwrap(), &TEST_BODY.to_string());
 
         assert_eq!(args.profile, TEST_PROFILE);
-
         let profile: &dyn HttpConnectionProfile = &args;
-
         assert_eq!(profile.user().unwrap(), &TEST_USER.to_string());
         assert_eq!(profile.password().unwrap(), &TEST_PASSWORD.to_string());
         assert_eq!(profile.ca_cert().unwrap(), &TEST_CA_CERT.to_string());
         assert_eq!(profile.insecure(), Some(TEST_INSECURE));
-
         assert_eq!(profile.headers().len(), 2);
         assert_eq!(
             profile.headers().get("content-type").unwrap(),

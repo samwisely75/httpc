@@ -1,47 +1,55 @@
 use regex::Regex;
 use std::fmt::{Display, Formatter};
 
+const REGEX_PATTERNS_URL: &str = r"^(?P<scheme>[^:\/]+)?(:\/\/)?(?P<host>[^:\/\?]+)?(:(?P<port>\d+))?(?P<path>[^\?]*)(\?(?P<query>.*))?$";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Server {
     host: String,
     port: Option<u16>,
-    protocol: Option<String>,
+    scheme: Option<String>,
 }
 
 impl Server {
-    pub fn new(host: String, port: Option<u16>, protocol: Option<String>) -> Self {
+    pub fn new(host: String, port: Option<u16>, scheme: Option<String>) -> Self {
         Server {
             host,
             port,
-            protocol,
+            scheme,
         }
     }
 
     #[allow(dead_code)]
     pub fn parse(s: &str) -> crate::utils::Result<Self> {
-        let re =
-            Regex::new(r"^(?P<protocol>[^:]+)?(://)?(?P<host>[^:\/]+)?(:(?P<port>\d+))?$").unwrap();
-        let caps = re.captures(s).unwrap();
+        let caps = Regex::new(REGEX_PATTERNS_URL)
+            .unwrap()
+            .captures(s)
+            .unwrap_or_else(|| {
+                panic!("Failed to parse server from string: {}", s);
+            });
 
-        let protocol = caps.name("protocol").map(|m| m.as_str().to_string());
-        let host = caps.name("host").unwrap().as_str().to_string();
+        let proto_as_host = caps.name("host").is_none() && caps.name("scheme").is_some();
+
+        let host = if proto_as_host {
+            caps.name("scheme").unwrap().as_str().to_string()
+        } else {
+            caps.name("host").unwrap().as_str().to_string()
+        };
+
+        let scheme = if proto_as_host {
+            None
+        } else {
+            caps.name("scheme").map(|m| m.as_str().to_string())
+        };
+
         let port = caps
             .name("port")
             .map(|m| m.as_str().parse::<u16>().unwrap());
-
-        if host.is_empty() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Host cannot be empty",
-            )
-            .into());
-        }
-
-        Ok(Self::new(host, port, protocol))
+        
+        Ok(Self::new(host, port, scheme))
     }
 
-    pub fn protocol(&self) -> Option<&String> {
-        self.protocol.as_ref()
+    pub fn scheme(&self) -> Option<&String> {
+        self.scheme.as_ref()
     }
 
     pub fn host(&self) -> &String {
@@ -55,8 +63,8 @@ impl Server {
 
 impl Display for Server {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let mut buffer = if let Some(protocol) = &self.protocol {
-            format!("{}://", protocol)
+        let mut buffer = if let Some(scheme) = &self.scheme {
+            format!("{}://", scheme)
         } else {
             "plaintext://".to_string()
         };
@@ -129,12 +137,13 @@ impl Url {
         // Use regex to breakdown the URL into its components and return them in the Url struct
         // This regex stores the first part of the URL in the scheme group when the original string is
         // in relative path format without a leading slash. (e.g. `path/to/resource` instead of `/path/to/resource`)
-        let re = Regex::new(r"^(?P<scheme>[^:\/]+)?(:\/\/)?(?P<host>[^:\/\?]+)?(:(?P<port>\d+))?(?P<path>[^\?]*)(\?(?P<query>.*))?$").unwrap();
+        let re = Regex::new(REGEX_PATTERNS_URL).unwrap();
         let caps = re.captures(s).unwrap();
         let rel_url_wo_lead_slash = caps.name("scheme").is_some()
             && caps.name("host").is_none()
             && caps.name("port").is_none()
             && caps.name("path").is_some();
+        
         let scheme = if rel_url_wo_lead_slash {
             None
         } else {
@@ -192,9 +201,6 @@ impl Url {
     }
 
     // pub fn merge(self, other: &Url) -> Self {
-    //     dbg!(&self);
-    //     dbg!(&other);
-
     //     // if the other URL has a host => replace scheme, host and port, do not retain the originals
     //     let (scheme, host, port) = if other.host().is_some() {
     //         (other.scheme(), other.host(), other.port())
@@ -223,8 +229,6 @@ impl Url {
     //         path: path.map(|s| s.to_string()),
     //         query: query.map(|s| s.to_string()),
     //     };
-
-    //     dbg!(&merged);
     //     merged
     // }
 
@@ -250,7 +254,7 @@ impl Url {
 
     #[allow(dead_code)]
     pub fn scheme(&self) -> Option<&String> {
-        self.server.as_ref().and_then(|s| s.protocol())
+        self.server.as_ref().and_then(|s| s.scheme())
     }
 
     #[allow(dead_code)]
@@ -281,81 +285,109 @@ impl std::fmt::Display for Url {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    mod server {
+        use super::super::*;
 
-    #[test]
-    fn parse_should_parse_abosolute_url() {
-        let url = Url::parse("http://example.com:8080/path/to/resource?query=string");
-        assert_eq!(url.scheme(), Some(&"http".to_string()));
-        assert_eq!(url.host(), Some(&"example.com".to_string()));
-        assert_eq!(url.port(), Some(8080));
-        assert_eq!(url.path(), Some(&"/path/to/resource".to_string()));
-        assert_eq!(url.query(), Some(&"query=string".to_string()));
-        assert_eq!(
-            url.to_server().unwrap().to_string(),
-            "http://example.com:8080"
-        );
-        assert_eq!(
-            url.to_url_path().unwrap().to_string(),
-            "/path/to/resource?query=string"
-        );
+        #[test]
+        fn parse_should_parse_server_with_scheme_host_and_port() -> crate::utils::Result<()> {
+            let server = Server::parse("http://example.com:8080")?;
+            assert_eq!(server.scheme(), Some(&"http".to_string()));
+            assert_eq!(server.host(), "example.com");
+            assert_eq!(server.port(), Some(8080));
+            Ok(())
+        }
+
+        #[test]
+        fn parse_should_parse_server_without_port() -> crate::utils::Result<()> {
+            let server = Server::parse("http://example.com")?;
+            assert_eq!(server.scheme(), Some(&"http".to_string()));
+            assert_eq!(server.host(), "example.com");
+            assert_eq!(server.port(), None);
+            Ok(())
+        }
+
+        #[test]
+        fn parse_should_parse_server_with_host_only() -> crate::utils::Result<()> {
+            let server = Server::parse("example.com")?;
+            assert_eq!(server.scheme(), None);
+            assert_eq!(server.host(), "example.com");
+            assert_eq!(server.port(), None);
+            Ok(())
+        }
     }
+    mod url {
+        use super::super::*;
 
-    #[test]
-    fn parse_should_parse_relative_url_with_no_scheme_and_host() {
-        let url = Url::parse("/path/to/resource?query=string");
-        assert_eq!(url.to_server(), None);
-        assert_eq!(url.scheme(), None);
-        assert_eq!(url.host(), None);
-        assert_eq!(url.port(), None);
-        assert_eq!(url.path(), Some(&"/path/to/resource".to_string()));
-        assert_eq!(url.query(), Some(&"query=string".to_string()));
-        assert_eq!(
-            url.to_url_path().unwrap().to_string(),
-            "/path/to/resource?query=string"
-        );
+        #[test]
+        fn parse_should_parse_abosolute_url_with_scheme_host_port() {
+            let url = Url::parse("http://example.com:8080/path/to/resource?query=string");
+            assert_eq!(url.scheme(), Some(&"http".to_string()));
+            assert_eq!(url.host(), Some(&"example.com".to_string()));
+            assert_eq!(url.port(), Some(8080));
+            assert_eq!(url.path(), Some(&"/path/to/resource".to_string()));
+            assert_eq!(url.query(), Some(&"query=string".to_string()));
+            assert_eq!(
+                url.to_server().unwrap().to_string(),
+                "http://example.com:8080"
+            );
+            assert_eq!(
+                url.to_url_path().unwrap().to_string(),
+                "/path/to/resource?query=string"
+            );
+        }
+
+        #[test]
+        fn parse_should_parse_relative_url_with_no_scheme_and_host() {
+            let url = Url::parse("/path/to/resource?query=string");
+            assert_eq!(url.to_server(), None);
+            assert_eq!(url.scheme(), None);
+            assert_eq!(url.host(), None);
+            assert_eq!(url.port(), None);
+            assert_eq!(url.path(), Some(&"/path/to/resource".to_string()));
+            assert_eq!(url.query(), Some(&"query=string".to_string()));
+            assert_eq!(
+                url.to_url_path().unwrap().to_string(),
+                "/path/to/resource?query=string"
+            );
+        }
+
+        #[test]
+        fn parse_should_return_slashed_path_if_original_doesnt_have_lead_slash() {
+            let url = Url::parse("path/to/resource?query=string");
+            assert_eq!(url.scheme(), None);
+            assert_eq!(url.host(), None);
+            assert_eq!(url.port(), None);
+            assert_eq!(url.path(), Some(&"/path/to/resource".to_string()));
+            assert_eq!(url.query(), Some(&"query=string".to_string()));
+            assert_eq!(url.to_server(), None);
+            assert_eq!(
+                url.to_url_path().unwrap().to_string(),
+                "/path/to/resource?query=string"
+            );
+        }
+
+        // #[test]
+        // fn merge_should_preserve_host_when_merging_url_is_relative() {
+        //     let url1 = Url::parse("https://example.com:9999");
+        //     let url2 = Url::parse("path/to/resource?query=string");
+        //     let url = url1.merge(&url2);
+        //     assert_eq!(url.scheme, Some("https".to_string()));
+        //     assert_eq!(url.host, Some("example.com".to_string()));
+        //     assert_eq!(url.port, Some(9999));
+        //     assert_eq!(url.path, Some("/path/to/resource".to_string()));
+        //     assert_eq!(url.query, Some("query=string".to_string()));
+        // }
+
+        // #[test]
+        // fn merge_should_replace_all_when_merging_url_has_a_host() {
+        //     let url1 = Url::parse("https://example.com:9999/path/to/resource?query=string");
+        //     let url2 = Url::parse("http://somethingelse.com");
+        //     let url = url1.merge(&url2);
+        //     assert_eq!(url.scheme, Some("http".to_string()));
+        //     assert_eq!(url.host, Some("somethingelse.com".to_string()));
+        //     assert_eq!(url.port, None);
+        //     assert_eq!(url.path, None);
+        //     assert_eq!(url.query, None);
+        // }
     }
-
-    #[test]
-    fn parse_should_return_slashed_path_if_original_doesnt_have_lead_slash() {
-        let url = Url::parse("path/to/resource?query=string");
-        assert_eq!(url.scheme(), None);
-        assert_eq!(url.host(), None);
-        assert_eq!(url.port(), None);
-        assert_eq!(url.path(), Some(&"/path/to/resource".to_string()));
-        assert_eq!(url.query(), Some(&"query=string".to_string()));
-        assert_eq!(url.to_server(), None);
-        assert_eq!(
-            url.to_url_path().unwrap().to_string(),
-            "/path/to/resource?query=string"
-        );
-    }
-
-    // #[test]
-    // fn merge_should_preserve_host_when_merging_url_is_relative() {
-    //     let url1 = Url::parse("https://example.com:9999");
-    //     let url2 = Url::parse("path/to/resource?query=string");
-    //     let url = url1.merge(&url2);
-    //     assert_eq!(url.scheme, Some("https".to_string()));
-    //     assert_eq!(url.host, Some("example.com".to_string()));
-    //     assert_eq!(url.port, Some(9999));
-    //     assert_eq!(url.path, Some("/path/to/resource".to_string()));
-    //     assert_eq!(url.query, Some("query=string".to_string()));
-    // }
-
-    // #[test]
-    // fn merge_should_replace_all_when_merging_url_has_a_host() {
-    //     let url1 = Url::parse("https://example.com:9999/path/to/resource?query=string");
-    //     let url2 = Url::parse("http://somethingelse.com");
-
-    //     dbg!(&url1);
-    //     dbg!(&url2);
-
-    //     let url = url1.merge(&url2);
-    //     assert_eq!(url.scheme, Some("http".to_string()));
-    //     assert_eq!(url.host, Some("somethingelse.com".to_string()));
-    //     assert_eq!(url.port, None);
-    //     assert_eq!(url.path, None);
-    //     assert_eq!(url.query, None);
-    // }
 }

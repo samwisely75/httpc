@@ -7,12 +7,12 @@ use ini::{Ini, Properties};
 use std::collections::HashMap;
 
 pub const DEFAULT_INI_FILE_PATH: &str = "~/.wiq";
-pub const DEFAULT_PROTOCOL: &str = "http";
+pub const DEFAULT_SCHEME: &str = "http";
 pub const PROFILE_BLANK: &str = "none";
 
 const INI_HOST: &str = "host";
 const INI_PORT: &str = "port";
-const INI_PROTOCOL: &str = "protocol";
+const INI_SCHEME: &str = "scheme";
 const INI_USER: &str = "user";
 const INI_PASSWORD: &str = "password";
 const INI_CA_CERT: &str = "ca_cert";
@@ -58,11 +58,11 @@ impl HttpConnectionProfile for IniProfile {
 impl IniProfile {
     pub fn merge_profile<T>(&mut self, other: &T) -> &mut Self
     where
-        // The reason using Generic is to force Debug trait to 
+        // The reason using Generic is to force Debug trait to
         // be implemented for testing purpose.
         // We can revert it to `impl HttpConnectionProfile` if we
         // don't need to test it.
-        T: HttpConnectionProfile + std::fmt::Debug, 
+        T: HttpConnectionProfile + std::fmt::Debug,
     {
         if other.server().is_some() {
             self.server = other.server().cloned();
@@ -98,28 +98,21 @@ impl IniProfileStore {
     }
 
     pub fn get_profile(&self, name: &str) -> Result<Option<IniProfile>> {
-        dbg!("start getting profile: {}", name);
-
         if name == PROFILE_BLANK {
-            dbg!("returning blank profile");
             return Ok(Some(get_blank_profile()));
         }
 
         let ini = if std::path::Path::new(&self.file_path).exists() {
-            dbg!("loading ini file from {}", &self.file_path);
             Ini::load_from_file(&self.file_path)?
         } else {
             return Ok(None);
         };
 
-        dbg!("Loading section from ini file");
         let section = match ini.section(Some(name.to_string())) {
             Some(s) => {
-                dbg!("The section {} found", name);
                 s
             }
             None => {
-                dbg!("No luck. Returning None");
                 return Ok(None);
             }
         };
@@ -142,11 +135,15 @@ impl IniProfileStore {
 
         let host = try_get::<String>(&section, INI_HOST);
         let port = try_get::<u16>(&section, INI_PORT);
-        let protocol =
-            try_get::<String>(&section, INI_PROTOCOL).or(Some(DEFAULT_PROTOCOL.to_string()));
+        let scheme = if let Some(scheme) = try_get::<String>(&section, INI_SCHEME) {
+            Some(scheme)
+        } else {
+            Some(DEFAULT_SCHEME.to_string())
+        };
+        //    try_get::<String>(&section, INI_SCHEME).or(Some(DEFAULT_SCHEME.to_string()));
 
         let server = if let Some(host) = host {
-            Some(Server::new(host, port, protocol))
+            Some(Server::new(host, port, scheme))
         } else {
             None
         };
@@ -161,7 +158,6 @@ impl IniProfileStore {
             headers: headers.clone(),
         };
 
-        dbg!("Loading profile complete: {:?}", &profile);
         Ok(Some(profile))
     }
 
@@ -174,9 +170,9 @@ impl IniProfileStore {
             let server = profile.server().unwrap();
             section.set(INI_HOST, server.host().to_string());
             if server.port().is_some() {
-                section.set(INI_PROTOCOL, server.protocol().unwrap());
+                section.set(INI_PORT, server.port().unwrap().to_string());
             }
-            section.set(INI_PROTOCOL, server.protocol().unwrap().to_string());
+            section.set(INI_SCHEME, server.scheme().unwrap().to_string());
         }
         if profile.user().is_some() {
             section.set(INI_USER, profile.user().unwrap());
@@ -271,12 +267,14 @@ mod test {
     use std::io::Write;
     use tempfile::{NamedTempFile, TempPath};
 
-    const TEST_SERVER: &str = "http://test-server";
+    const TEST_HOST: &str = "test-server";
+    const TEST_PORT: &str = "8082";
+    const TEST_SCHEME: &str = "http";
     const TEST_USER: &str = "test_user";
     const TEST_PASSWORD: &str = "test_password";
     const TEST_CA_CERT: &str = "/etc/pki/ca/cert.crt";
-    const TEST_API_KEY: &str = "ABCDE";
     const TEST_CONTENT_TYPE: &str = "application/json";
+    const TEST_INSECURE: bool = false;
     const TEST_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
     const DEFAULT_INI_SECTION: &str = "default";
 
@@ -284,20 +282,22 @@ mod test {
         let content = format!(
             "[{}]\n\
              host={}\n\
+             port={}\n\
+             scheme={}\n\
              user={}\n\
              password={}\n\
              ca_cert={}\n\
              insecure=false\n\
-             api_key={}\n\
              @Content-Type={}\n\
              @User-Agent={}\n\
              ",
             DEFAULT_INI_SECTION,
-            TEST_SERVER,
+            TEST_HOST,
+            TEST_PORT,
+            TEST_SCHEME,
             TEST_USER,
             TEST_PASSWORD,
             TEST_CA_CERT,
-            TEST_API_KEY,
             TEST_CONTENT_TYPE,
             TEST_USER_AGENT
         );
@@ -320,15 +320,15 @@ mod test {
         let profile = IniProfileStore::new(&path)
             .get_profile(DEFAULT_INI_SECTION)?
             .unwrap();
-
-        assert_eq!(
-            profile.server().map(|u| u.to_string()),
-            Some(TEST_SERVER.to_string())
-        );
+        assert!(profile.server().is_some());
+        let server = profile.server().unwrap();
+        assert_eq!(server.host(), &TEST_HOST.to_string());
+        assert_eq!(server.port(), Some(TEST_PORT.parse::<u16>().unwrap()));
+        assert_eq!(server.scheme(), Some(&TEST_SCHEME.to_string()));
         assert_eq!(profile.user(), Some(&TEST_USER.to_string()));
         assert_eq!(profile.password(), Some(&TEST_PASSWORD.to_string()));
         assert_eq!(profile.ca_cert(), Some(&TEST_CA_CERT.to_string()));
-        assert_eq!(profile.insecure(), Some(false));
+        assert_eq!(profile.insecure(), Some(TEST_INSECURE));
 
         assert_eq!(profile.headers.len(), 2);
         assert_eq!(
@@ -350,17 +350,23 @@ mod test {
     }
 
     #[test]
-    fn add_profile_should_properly_add_profile_in_ini_file() -> Result<()> {
+    fn add_profile_should_properly_add_record_in_ini_file() -> Result<()> {
+        let server = Server::new(
+            TEST_HOST.to_string(),
+            Some(TEST_PORT.parse::<u16>().unwrap()),
+            Some(TEST_SCHEME.to_string()),
+        );
+
         let mut headers = HashMap::new();
         headers.insert("Content-Type".to_string(), TEST_CONTENT_TYPE.to_string());
         headers.insert("User-Agent".to_string(), TEST_USER_AGENT.to_string());
 
         let profile = IniProfile {
             name: DEFAULT_INI_SECTION.to_string(),
-            server: Some(Server::parse(TEST_SERVER)?),
+            server: Some(server),
             user: Some(TEST_USER.to_string()),
             password: Some(TEST_PASSWORD.to_string()),
-            insecure: Some(false),
+            insecure: Some(TEST_INSECURE),
             ca_cert: Some(TEST_CA_CERT.to_string()),
             headers: headers,
         };
@@ -439,7 +445,7 @@ mod test {
             server: Some(Server::parse(&"https://localhost:8081")?),
             user: None,
             password: None,
-            insecure: Some(true),
+            insecure: Some(TEST_INSECURE),
             ca_cert: None,
             headers: headers.clone(),
         };
@@ -456,12 +462,12 @@ mod test {
         );
 
         let merged = original.merge_profile(&merging);
-        let merged_host = merged.server().unwrap();
+        let merged_server = merged.server().unwrap();
 
-        assert_eq!(merged_host.to_string(), "http://example.com");
+        assert_eq!(merged_server.to_string(), "http://example.com");
         assert_eq!(merged.user(), Some(&"test_user".to_string()));
         assert_eq!(merged.password(), Some(&"test_password".to_string()));
-        assert_eq!(merged.insecure(), Some(true));
+        assert_eq!(merged.insecure(), Some(TEST_INSECURE));
         assert_eq!(merged.ca_cert(), Some(&"/etc/pki/ca/cert.crt".to_string()));
         assert_eq!(merged.headers.len(), 2);
         assert_eq!(merged.headers["content-type"], "text/html".to_string());

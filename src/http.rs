@@ -79,8 +79,9 @@ impl HttpClient {
 
     pub async fn request(&self, args: &impl HttpRequestArgs) -> Result<HttpResponse> {
         let req = self.build_request(args);
-        let res = self.client.execute(req).await?;
+        dbg!(&req);
 
+        let res = self.client.execute(req).await?;
         let headers = res.headers().clone();
         let status = res.status();
         let body_bytes = res.bytes().await?;
