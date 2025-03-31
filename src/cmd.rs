@@ -47,6 +47,14 @@ struct ClapArgs {
         default_value = "false"
     )]
     verbose: bool,
+
+    #[clap(
+        short = 'x',
+        long,
+        help = "HTTP proxy URL in <scheme>://<host>:<port> format",
+        value_parser = OsStringValueParser::new().map(|s| Endpoint::parse(s.to_str().unwrap()))
+    )]
+    proxy: Option<Endpoint>
 }
 
 #[derive(Debug, Clone)]
@@ -61,6 +69,7 @@ pub struct CommandLineArgs {
     insecure: Option<bool>,
     headers: HashMap<String, String>,
     verbose: bool,
+    proxy: Option<Endpoint>,
 }
 
 fn vec_to_hashmap(vec: Vec<String>) -> HashMap<String, String> {
@@ -92,10 +101,11 @@ impl CommandLineArgs {
             ca_cert: args.ca_cert,
             insecure: Some(args.insecure),
             headers: vec_to_hashmap(args.headers),
+            proxy: args.proxy,
         }
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // for testing
     pub fn parse_from<I, T>(itr: I) -> Self
     where
         I: IntoIterator<Item = T>,
@@ -113,6 +123,7 @@ impl CommandLineArgs {
             insecure: Some(args.insecure),
             headers: vec_to_hashmap(args.headers),
             verbose: args.verbose,
+            proxy: args.proxy,
         }
     }
 
@@ -186,8 +197,12 @@ impl HttpConnectionProfile for CommandLineArgs {
         &self.headers
     }
 
-    fn endpoint(&self) -> Option<&Endpoint> {
+    fn server(&self) -> Option<&Endpoint> {
         self.url.to_endpoint()
+    }
+
+    fn proxy(&self) -> Option<&Endpoint> {
+        self.proxy.as_ref()
     }
 }
 

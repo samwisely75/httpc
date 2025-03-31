@@ -17,21 +17,23 @@ const INI_USER: &str = "user";
 const INI_PASSWORD: &str = "password";
 const INI_CA_CERT: &str = "ca_cert";
 const INI_INSECURE: &str = "insecure";
+const INI_PROXY: &str = "proxy";
 
 #[derive(Debug)]
 pub struct IniProfile {
     name: String,
-    endpoint: Option<Endpoint>,
+    server: Option<Endpoint>,
     user: Option<String>,
     password: Option<String>,
     insecure: Option<bool>,
     ca_cert: Option<String>,
     headers: HashMap<String, String>,
+    proxy: Option<Endpoint>,
 }
 
 impl HttpConnectionProfile for IniProfile {
-    fn endpoint(&self) -> Option<&Endpoint> {
-        self.endpoint.as_ref()
+    fn server(&self) -> Option<&Endpoint> {
+        self.server.as_ref()
     }
 
     fn user(&self) -> Option<&String> {
@@ -53,6 +55,10 @@ impl HttpConnectionProfile for IniProfile {
     fn headers(&self) -> &HashMap<String, String> {
         &self.headers
     }
+
+    fn proxy(&self) -> Option<&Endpoint> {
+        self.proxy.as_ref()
+    }
 }
 
 impl IniProfile {
@@ -64,8 +70,8 @@ impl IniProfile {
         // don't need to test it.
         T: HttpConnectionProfile + std::fmt::Debug,
     {
-        if other.endpoint().is_some() {
-            self.endpoint = other.endpoint().cloned();
+        if other.server().is_some() {
+            self.server = other.server().cloned();
         }
         if other.user().is_some() {
             self.user = other.user().cloned();
@@ -81,6 +87,9 @@ impl IniProfile {
             for (k, v) in other.headers() {
                 self.headers.insert(k.clone(), v.clone());
             }
+        }
+        if other.proxy().is_some() {
+            self.proxy = other.proxy().cloned();
         }
 
         self
@@ -159,12 +168,13 @@ impl IniProfileStore {
 
         let profile = IniProfile {
             name: name.to_string(),
-            endpoint,
+            server: endpoint,
             user: try_get(&section, INI_USER),
             password: try_get(&section, INI_PASSWORD),
             insecure: try_get::<bool>(&section, INI_INSECURE),
             ca_cert: try_get(&section, INI_CA_CERT),
             headers: headers.clone(),
+            proxy: try_get::<Endpoint>(&section, INI_PROXY),
         };
 
         Ok(Some(profile))
@@ -175,8 +185,8 @@ impl IniProfileStore {
         let mut ini = Ini::new();
         let mut section = ini.with_section(Some(profile.name.clone()));
 
-        if profile.endpoint().is_some() {
-            let endpoint = profile.endpoint().unwrap();
+        if profile.server().is_some() {
+            let endpoint = profile.server().unwrap();
             section.set(INI_HOST, endpoint.host().to_string());
             if endpoint.port().is_some() {
                 section.set(INI_PORT, endpoint.port().unwrap().to_string());
@@ -208,12 +218,13 @@ impl IniProfileStore {
 pub fn get_blank_profile() -> IniProfile {
     IniProfile {
         name: PROFILE_BLANK.to_string(),
-        endpoint: None,
+        server: None,
         user: None,
         password: None,
         insecure: None,
         ca_cert: None,
         headers: HashMap::new(),
+        proxy: None
     }
 }
 
@@ -257,7 +268,7 @@ pub fn ask_new_profile(name: &str, i: &std::io::Stdin) -> Result<Option<IniProfi
 
     Ok(Some(IniProfile {
         name: name.to_string(),
-        endpoint: Some(Endpoint::new(
+        server: Some(Endpoint::new(
             host,
             Some(port.parse::<u16>().unwrap()),
             Some(scheme.to_string()),
@@ -267,6 +278,7 @@ pub fn ask_new_profile(name: &str, i: &std::io::Stdin) -> Result<Option<IniProfi
         insecure: Some(false),
         ca_cert: ca_cert,
         headers: HashMap::new(),
+        proxy: None
     }))
 }
 #[cfg(test)]
@@ -329,8 +341,8 @@ mod test {
         let profile = IniProfileStore::new(&path)
             .get_profile(DEFAULT_INI_SECTION)?
             .unwrap();
-        assert!(profile.endpoint().is_some());
-        let endpoint = profile.endpoint().unwrap();
+        assert!(profile.server().is_some());
+        let endpoint = profile.server().unwrap();
         assert_eq!(endpoint.host(), &TEST_HOST.to_string());
         assert_eq!(endpoint.port(), Some(TEST_PORT.parse::<u16>().unwrap()));
         assert_eq!(endpoint.scheme(), Some(&TEST_SCHEME.to_string()));
@@ -372,12 +384,13 @@ mod test {
 
         let profile = IniProfile {
             name: DEFAULT_INI_SECTION.to_string(),
-            endpoint: Some(endpoint),
+            server: Some(endpoint),
             user: Some(TEST_USER.to_string()),
             password: Some(TEST_PASSWORD.to_string()),
             insecure: Some(TEST_INSECURE),
             ca_cert: Some(TEST_CA_CERT.to_string()),
             headers: headers,
+            proxy: None
         };
 
         let temp_file = NamedTempFile::new()?;
@@ -397,6 +410,7 @@ mod test {
         password: String,
         ca_cert: String,
         headers: HashMap<String, String>,
+        proxy: Option<Endpoint>,
     }
 
     impl TestArgs {
@@ -413,12 +427,13 @@ mod test {
                 password: password.to_string(),
                 ca_cert: ca_cert.to_string(),
                 headers: headers.clone(),
+                proxy: None,
             }
         }
     }
 
     impl HttpConnectionProfile for TestArgs {
-        fn endpoint(&self) -> Option<&Endpoint> {
+        fn server(&self) -> Option<&Endpoint> {
             Some(&self.url)
         }
 
@@ -441,6 +456,10 @@ mod test {
         fn headers(&self) -> &HashMap<String, String> {
             &self.headers
         }
+
+        fn proxy(&self) -> Option<&Endpoint> {
+            self.proxy.as_ref()
+        }
     }
 
     #[test]
@@ -451,19 +470,20 @@ mod test {
 
         let mut original = IniProfile {
             name: DEFAULT_INI_SECTION.to_string(),
-            endpoint: Some(Endpoint::parse(&"https://localhost:8081")?),
+            server: Some(Endpoint::parse(&"https://localhost:8081")),
             user: None,
             password: None,
             insecure: Some(TEST_INSECURE),
             ca_cert: None,
             headers: headers.clone(),
+            proxy: None
         };
 
         let mut headers: HashMap<String, String> = HashMap::new();
         headers.insert("content-type".to_string(), "text/html".to_string());
 
         let merging = TestArgs::new(
-            &Endpoint::parse(&"http://example.com")?,
+            &Endpoint::parse(&"http://example.com"),
             "test_user",
             "test_password",
             "/etc/pki/ca/cert.crt",
@@ -471,7 +491,7 @@ mod test {
         );
 
         let merged = original.merge_profile(&merging);
-        let merged_endpoint = merged.endpoint().unwrap();
+        let merged_endpoint = merged.server().unwrap();
 
         assert_eq!(merged_endpoint.to_string(), "http://example.com");
         assert_eq!(merged.user(), Some(&"test_user".to_string()));
