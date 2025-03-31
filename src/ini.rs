@@ -190,7 +190,7 @@ pub fn get_blank_profile() -> IniProfile {
         insecure: None,
         ca_cert: None,
         headers: HashMap::new(),
-        proxy: None
+        proxy: None,
     }
 }
 
@@ -244,7 +244,7 @@ pub fn ask_new_profile(name: &str, i: &std::io::Stdin) -> Result<Option<IniProfi
         insecure: Some(false),
         ca_cert: ca_cert,
         headers: HashMap::new(),
-        proxy: None
+        proxy: None,
     }))
 }
 #[cfg(test)]
@@ -354,7 +354,7 @@ mod test {
             insecure: Some(TEST_INSECURE),
             ca_cert: Some(TEST_CA_CERT.to_string()),
             headers: headers,
-            proxy: None
+            proxy: None,
         };
 
         let temp_file = NamedTempFile::new()?;
@@ -440,7 +440,7 @@ mod test {
             insecure: Some(TEST_INSECURE),
             ca_cert: None,
             headers: headers.clone(),
-            proxy: None
+            proxy: None,
         };
 
         let mut headers: HashMap<String, String> = HashMap::new();

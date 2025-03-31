@@ -12,7 +12,7 @@ struct ClapArgs {
     #[clap(help = "HTTP method (GET/POST/PUT/DELETE etc.)")]
     method: String,
     #[clap(
-        value_parser = OsStringValueParser::new().map(|s| Url::parse(s.to_str().unwrap())), 
+        value_parser = OsStringValueParser::new().map(|s| Url::parse(s.to_str().unwrap())),
         help = "Absolute or relative URL (profile must be configured for relative)"
     )]
     url: Url,
@@ -54,7 +54,7 @@ struct ClapArgs {
         help = "HTTP proxy URL in <scheme>://<host>:<port> format",
         value_parser = OsStringValueParser::new().map(|s| Endpoint::parse(s.to_str().unwrap()))
     )]
-    proxy: Option<Endpoint>
+    proxy: Option<Endpoint>,
 }
 
 #[derive(Debug, Clone)]
