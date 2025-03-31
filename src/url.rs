@@ -3,19 +3,15 @@ use std::fmt::{Display, Formatter};
 
 const REGEX_PATTERNS_URL: &str = r"^(?P<scheme>[^:\/]+)?(:\/\/)?(?P<host>[^:\/\?]+)?(:(?P<port>\d+))?(?P<path>[^\?]*)(\?(?P<query>.*))?$";
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Server {
+pub struct Endpoint {
     host: String,
     port: Option<u16>,
     scheme: Option<String>,
 }
 
-impl Server {
+impl Endpoint {
     pub fn new(host: String, port: Option<u16>, scheme: Option<String>) -> Self {
-        Server {
-            host,
-            port,
-            scheme,
-        }
+        Endpoint { host, port, scheme }
     }
 
     #[allow(dead_code)]
@@ -24,7 +20,7 @@ impl Server {
             .unwrap()
             .captures(s)
             .unwrap_or_else(|| {
-                panic!("Failed to parse server from string: {}", s);
+                panic!("Failed to parse endpoint from string: {}", s);
             });
 
         let proto_as_host = caps.name("host").is_none() && caps.name("scheme").is_some();
@@ -44,7 +40,7 @@ impl Server {
         let port = caps
             .name("port")
             .map(|m| m.as_str().parse::<u16>().unwrap());
-        
+
         Ok(Self::new(host, port, scheme))
     }
 
@@ -61,7 +57,7 @@ impl Server {
     }
 }
 
-impl Display for Server {
+impl Display for Endpoint {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut buffer = if let Some(scheme) = &self.scheme {
             format!("{}://", scheme)
@@ -121,14 +117,14 @@ impl Display for UrlPath {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Url {
-    server: Option<Server>,
+    endpoint: Option<Endpoint>,
     path: Option<UrlPath>,
 }
 
 impl Url {
-    pub fn new(server: Option<&Server>, path: Option<&UrlPath>) -> Self {
+    pub fn new(endpoint: Option<&Endpoint>, path: Option<&UrlPath>) -> Self {
         Url {
-            server: server.cloned(),
+            endpoint: endpoint.cloned(),
             path: path.cloned(),
         }
     }
@@ -143,7 +139,7 @@ impl Url {
             && caps.name("host").is_none()
             && caps.name("port").is_none()
             && caps.name("path").is_some();
-        
+
         let scheme = if rel_url_wo_lead_slash {
             None
         } else {
@@ -165,8 +161,8 @@ impl Url {
             }
         };
 
-        let server = if caps.name("host").is_some() {
-            Some(Server::new(
+        let endpoint = if caps.name("host").is_some() {
+            Some(Endpoint::new(
                 caps.name("host").unwrap().as_str().to_string(),
                 caps.name("port")
                     .map(|m| m.as_str().parse::<u16>().unwrap()),
@@ -185,12 +181,12 @@ impl Url {
             None
         };
 
-        Url { server, path }
+        Url { endpoint, path }
     }
 
     #[allow(dead_code)]
-    pub fn set_server(&mut self, server: &Server) -> &mut Self {
-        self.server = Some(server.clone());
+    pub fn set_endpoint(&mut self, endpoint: &Endpoint) -> &mut Self {
+        self.endpoint = Some(endpoint.clone());
         self
     }
 
@@ -233,8 +229,8 @@ impl Url {
     // }
 
     #[allow(dead_code)]
-    pub fn to_server(&self) -> Option<&Server> {
-        self.server.as_ref()
+    pub fn to_endpoint(&self) -> Option<&Endpoint> {
+        self.endpoint.as_ref()
     }
 
     #[allow(dead_code)]
@@ -244,17 +240,17 @@ impl Url {
 
     #[allow(dead_code)]
     pub fn host(&self) -> Option<&String> {
-        self.server.as_ref().map(|s| s.host())
+        self.endpoint.as_ref().map(|s| s.host())
     }
 
     #[allow(dead_code)]
     pub fn port(&self) -> Option<u16> {
-        self.server.as_ref().and_then(|s| s.port())
+        self.endpoint.as_ref().and_then(|s| s.port())
     }
 
     #[allow(dead_code)]
     pub fn scheme(&self) -> Option<&String> {
-        self.server.as_ref().and_then(|s| s.scheme())
+        self.endpoint.as_ref().and_then(|s| s.scheme())
     }
 
     #[allow(dead_code)]
@@ -271,8 +267,8 @@ impl Url {
 impl std::fmt::Display for Url {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut url = String::new();
-        if self.server.is_some() {
-            url.push_str(&self.server.as_ref().unwrap().to_string());
+        if self.endpoint.is_some() {
+            url.push_str(&self.endpoint.as_ref().unwrap().to_string());
         }
 
         if self.path.is_some() {
@@ -285,33 +281,33 @@ impl std::fmt::Display for Url {
 
 #[cfg(test)]
 mod test {
-    mod server {
+    mod endpoint {
         use super::super::*;
 
         #[test]
-        fn parse_should_parse_server_with_scheme_host_and_port() -> crate::utils::Result<()> {
-            let server = Server::parse("http://example.com:8080")?;
-            assert_eq!(server.scheme(), Some(&"http".to_string()));
-            assert_eq!(server.host(), "example.com");
-            assert_eq!(server.port(), Some(8080));
+        fn parse_should_parse_endpoint_with_scheme_host_and_port() -> crate::utils::Result<()> {
+            let endpoint = Endpoint::parse("http://example.com:8080")?;
+            assert_eq!(endpoint.scheme(), Some(&"http".to_string()));
+            assert_eq!(endpoint.host(), "example.com");
+            assert_eq!(endpoint.port(), Some(8080));
             Ok(())
         }
 
         #[test]
-        fn parse_should_parse_server_without_port() -> crate::utils::Result<()> {
-            let server = Server::parse("http://example.com")?;
-            assert_eq!(server.scheme(), Some(&"http".to_string()));
-            assert_eq!(server.host(), "example.com");
-            assert_eq!(server.port(), None);
+        fn parse_should_parse_endpoint_without_port() -> crate::utils::Result<()> {
+            let endpoint = Endpoint::parse("http://example.com")?;
+            assert_eq!(endpoint.scheme(), Some(&"http".to_string()));
+            assert_eq!(endpoint.host(), "example.com");
+            assert_eq!(endpoint.port(), None);
             Ok(())
         }
 
         #[test]
-        fn parse_should_parse_server_with_host_only() -> crate::utils::Result<()> {
-            let server = Server::parse("example.com")?;
-            assert_eq!(server.scheme(), None);
-            assert_eq!(server.host(), "example.com");
-            assert_eq!(server.port(), None);
+        fn parse_should_parse_endpoint_with_host_only() -> crate::utils::Result<()> {
+            let endpoint = Endpoint::parse("example.com")?;
+            assert_eq!(endpoint.scheme(), None);
+            assert_eq!(endpoint.host(), "example.com");
+            assert_eq!(endpoint.port(), None);
             Ok(())
         }
     }
@@ -327,7 +323,7 @@ mod test {
             assert_eq!(url.path(), Some(&"/path/to/resource".to_string()));
             assert_eq!(url.query(), Some(&"query=string".to_string()));
             assert_eq!(
-                url.to_server().unwrap().to_string(),
+                url.to_endpoint().unwrap().to_string(),
                 "http://example.com:8080"
             );
             assert_eq!(
@@ -339,7 +335,7 @@ mod test {
         #[test]
         fn parse_should_parse_relative_url_with_no_scheme_and_host() {
             let url = Url::parse("/path/to/resource?query=string");
-            assert_eq!(url.to_server(), None);
+            assert_eq!(url.to_endpoint(), None);
             assert_eq!(url.scheme(), None);
             assert_eq!(url.host(), None);
             assert_eq!(url.port(), None);
@@ -359,7 +355,7 @@ mod test {
             assert_eq!(url.port(), None);
             assert_eq!(url.path(), Some(&"/path/to/resource".to_string()));
             assert_eq!(url.query(), Some(&"query=string".to_string()));
-            assert_eq!(url.to_server(), None);
+            assert_eq!(url.to_endpoint(), None);
             assert_eq!(
                 url.to_url_path().unwrap().to_string(),
                 "/path/to/resource?query=string"

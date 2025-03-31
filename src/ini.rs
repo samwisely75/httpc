@@ -1,6 +1,6 @@
 use crate::http::HttpConnectionProfile;
 use crate::stdio::{ask, ask_binary, ask_no_space_string, ask_path};
-use crate::url::Server;
+use crate::url::Endpoint;
 use crate::utils::Result;
 
 use ini::{Ini, Properties};
@@ -21,7 +21,7 @@ const INI_INSECURE: &str = "insecure";
 #[derive(Debug)]
 pub struct IniProfile {
     name: String,
-    server: Option<Server>,
+    endpoint: Option<Endpoint>,
     user: Option<String>,
     password: Option<String>,
     insecure: Option<bool>,
@@ -30,8 +30,8 @@ pub struct IniProfile {
 }
 
 impl HttpConnectionProfile for IniProfile {
-    fn server(&self) -> Option<&Server> {
-        self.server.as_ref()
+    fn endpoint(&self) -> Option<&Endpoint> {
+        self.endpoint.as_ref()
     }
 
     fn user(&self) -> Option<&String> {
@@ -64,8 +64,8 @@ impl IniProfile {
         // don't need to test it.
         T: HttpConnectionProfile + std::fmt::Debug,
     {
-        if other.server().is_some() {
-            self.server = other.server().cloned();
+        if other.endpoint().is_some() {
+            self.endpoint = other.endpoint().cloned();
         }
         if other.user().is_some() {
             self.user = other.user().cloned();
@@ -109,9 +109,7 @@ impl IniProfileStore {
         };
 
         let section = match ini.section(Some(name.to_string())) {
-            Some(s) => {
-                s
-            }
+            Some(s) => s,
             None => {
                 return Ok(None);
             }
@@ -134,6 +132,17 @@ impl IniProfileStore {
         }
 
         let host = try_get::<String>(&section, INI_HOST);
+
+        if host.is_none() {
+            return Err(
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("Missing 'host' entity in '{}' profile", name),
+                )
+                .into(),
+            );
+        }
+
         let port = try_get::<u16>(&section, INI_PORT);
         let scheme = if let Some(scheme) = try_get::<String>(&section, INI_SCHEME) {
             Some(scheme)
@@ -142,15 +151,15 @@ impl IniProfileStore {
         };
         //    try_get::<String>(&section, INI_SCHEME).or(Some(DEFAULT_SCHEME.to_string()));
 
-        let server = if let Some(host) = host {
-            Some(Server::new(host, port, scheme))
+        let endpoint = if let Some(host) = host {
+            Some(Endpoint::new(host, port, scheme))
         } else {
             None
         };
 
         let profile = IniProfile {
             name: name.to_string(),
-            server,
+            endpoint,
             user: try_get(&section, INI_USER),
             password: try_get(&section, INI_PASSWORD),
             insecure: try_get::<bool>(&section, INI_INSECURE),
@@ -166,13 +175,13 @@ impl IniProfileStore {
         let mut ini = Ini::new();
         let mut section = ini.with_section(Some(profile.name.clone()));
 
-        if profile.server().is_some() {
-            let server = profile.server().unwrap();
-            section.set(INI_HOST, server.host().to_string());
-            if server.port().is_some() {
-                section.set(INI_PORT, server.port().unwrap().to_string());
+        if profile.endpoint().is_some() {
+            let endpoint = profile.endpoint().unwrap();
+            section.set(INI_HOST, endpoint.host().to_string());
+            if endpoint.port().is_some() {
+                section.set(INI_PORT, endpoint.port().unwrap().to_string());
             }
-            section.set(INI_SCHEME, server.scheme().unwrap().to_string());
+            section.set(INI_SCHEME, endpoint.scheme().unwrap().to_string());
         }
         if profile.user().is_some() {
             section.set(INI_USER, profile.user().unwrap());
@@ -199,7 +208,7 @@ impl IniProfileStore {
 pub fn get_blank_profile() -> IniProfile {
     IniProfile {
         name: PROFILE_BLANK.to_string(),
-        server: None,
+        endpoint: None,
         user: None,
         password: None,
         insecure: None,
@@ -248,7 +257,7 @@ pub fn ask_new_profile(name: &str, i: &std::io::Stdin) -> Result<Option<IniProfi
 
     Ok(Some(IniProfile {
         name: name.to_string(),
-        server: Some(Server::new(
+        endpoint: Some(Endpoint::new(
             host,
             Some(port.parse::<u16>().unwrap()),
             Some(scheme.to_string()),
@@ -320,11 +329,11 @@ mod test {
         let profile = IniProfileStore::new(&path)
             .get_profile(DEFAULT_INI_SECTION)?
             .unwrap();
-        assert!(profile.server().is_some());
-        let server = profile.server().unwrap();
-        assert_eq!(server.host(), &TEST_HOST.to_string());
-        assert_eq!(server.port(), Some(TEST_PORT.parse::<u16>().unwrap()));
-        assert_eq!(server.scheme(), Some(&TEST_SCHEME.to_string()));
+        assert!(profile.endpoint().is_some());
+        let endpoint = profile.endpoint().unwrap();
+        assert_eq!(endpoint.host(), &TEST_HOST.to_string());
+        assert_eq!(endpoint.port(), Some(TEST_PORT.parse::<u16>().unwrap()));
+        assert_eq!(endpoint.scheme(), Some(&TEST_SCHEME.to_string()));
         assert_eq!(profile.user(), Some(&TEST_USER.to_string()));
         assert_eq!(profile.password(), Some(&TEST_PASSWORD.to_string()));
         assert_eq!(profile.ca_cert(), Some(&TEST_CA_CERT.to_string()));
@@ -351,7 +360,7 @@ mod test {
 
     #[test]
     fn add_profile_should_properly_add_record_in_ini_file() -> Result<()> {
-        let server = Server::new(
+        let endpoint = Endpoint::new(
             TEST_HOST.to_string(),
             Some(TEST_PORT.parse::<u16>().unwrap()),
             Some(TEST_SCHEME.to_string()),
@@ -363,7 +372,7 @@ mod test {
 
         let profile = IniProfile {
             name: DEFAULT_INI_SECTION.to_string(),
-            server: Some(server),
+            endpoint: Some(endpoint),
             user: Some(TEST_USER.to_string()),
             password: Some(TEST_PASSWORD.to_string()),
             insecure: Some(TEST_INSECURE),
@@ -383,7 +392,7 @@ mod test {
 
     #[derive(Debug)]
     struct TestArgs {
-        url: Server,
+        url: Endpoint,
         user: String,
         password: String,
         ca_cert: String,
@@ -392,7 +401,7 @@ mod test {
 
     impl TestArgs {
         fn new(
-            url: &Server,
+            url: &Endpoint,
             user: &str,
             password: &str,
             ca_cert: &str,
@@ -409,7 +418,7 @@ mod test {
     }
 
     impl HttpConnectionProfile for TestArgs {
-        fn server(&self) -> Option<&Server> {
+        fn endpoint(&self) -> Option<&Endpoint> {
             Some(&self.url)
         }
 
@@ -442,7 +451,7 @@ mod test {
 
         let mut original = IniProfile {
             name: DEFAULT_INI_SECTION.to_string(),
-            server: Some(Server::parse(&"https://localhost:8081")?),
+            endpoint: Some(Endpoint::parse(&"https://localhost:8081")?),
             user: None,
             password: None,
             insecure: Some(TEST_INSECURE),
@@ -454,7 +463,7 @@ mod test {
         headers.insert("content-type".to_string(), "text/html".to_string());
 
         let merging = TestArgs::new(
-            &Server::parse(&"http://example.com")?,
+            &Endpoint::parse(&"http://example.com")?,
             "test_user",
             "test_password",
             "/etc/pki/ca/cert.crt",
@@ -462,9 +471,9 @@ mod test {
         );
 
         let merged = original.merge_profile(&merging);
-        let merged_server = merged.server().unwrap();
+        let merged_endpoint = merged.endpoint().unwrap();
 
-        assert_eq!(merged_server.to_string(), "http://example.com");
+        assert_eq!(merged_endpoint.to_string(), "http://example.com");
         assert_eq!(merged.user(), Some(&"test_user".to_string()));
         assert_eq!(merged.password(), Some(&"test_password".to_string()));
         assert_eq!(merged.insecure(), Some(TEST_INSECURE));

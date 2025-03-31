@@ -66,24 +66,24 @@ async fn main() -> Result<()> {
 }
 
 fn print_profile(profile: &impl HttpConnectionProfile) {
-    let server = profile.server().unwrap();
+    let endpoint = profile.endpoint().unwrap();
     eprintln!("> connection:");
-    eprintln!(">   host: {}", server.host());
+    eprintln!(">   host: {}", endpoint.host());
     eprintln!(
         ">   port: {}",
-        server
+        endpoint
             .port()
             .map(|p| p.to_string())
             .unwrap_or("<none>".to_string())
     );
-    eprintln!(">   scheme: {}", server.scheme().unwrap());
-    if server.scheme().unwrap() == "https" {
+    eprintln!(">   scheme: {}", endpoint.scheme().unwrap());
+    if endpoint.scheme().unwrap() == "https" {
         eprintln!(
             ">   ca-cert: {}",
             profile.ca_cert().unwrap_or(&"<none>".to_string())
         );
         eprintln!(">   verify-cert: {}", !profile.insecure().unwrap());
-    } 
+    }
 
     if profile.user().is_some() {
         eprintln!(">   user: {}", profile.user().unwrap());

@@ -1,6 +1,6 @@
 use crate::url::{Url, UrlPath};
 use crate::utils::Result;
-use crate::{encoder::*, url::Server};
+use crate::{encoder::*, url::Endpoint};
 
 use reqwest::{
     Certificate, Client, Method, Request, StatusCode,
@@ -12,7 +12,7 @@ use std::fmt::Debug;
 const DEFAULT_METHOD: &str = "GET";
 
 pub trait HttpConnectionProfile {
-    fn server(&self) -> Option<&Server>;
+    fn endpoint(&self) -> Option<&Endpoint>;
     fn user(&self) -> Option<&String>;
     fn password(&self) -> Option<&String>;
     fn insecure(&self) -> Option<bool>;
@@ -50,7 +50,7 @@ impl HttpResponse {
 
 pub struct HttpClient {
     client: Client,
-    server: Server,
+    endpoint: Endpoint,
     user: Option<String>,
     password: Option<String>,
 }
@@ -68,9 +68,9 @@ impl HttpClient {
         let client = Self::build_client(args);
         HttpClient {
             client,
-            server: args
-                .server()
-                .expect("Server cannot be empty when building HttpClient")
+            endpoint: args
+                .endpoint()
+                .expect("Endpoint cannot be empty when building HttpClient")
                 .clone(),
             user: args.user().cloned(),
             password: args.password().cloned(),
@@ -79,8 +79,6 @@ impl HttpClient {
 
     pub async fn request(&self, args: &impl HttpRequestArgs) -> Result<HttpResponse> {
         let req = self.build_request(args);
-        dbg!(&req);
-
         let res = self.client.execute(req).await?;
         let headers = res.headers().clone();
         let status = res.status();
@@ -109,7 +107,7 @@ impl HttpClient {
         let default_method = DEFAULT_METHOD.to_string();
         let method_str = args.method().unwrap_or(&default_method);
         let method = Method::from_bytes(method_str.as_bytes()).unwrap();
-        let url = Url::new(Some(&self.server), args.url_path()).to_string();
+        let url = Url::new(Some(&self.endpoint), args.url_path()).to_string();
 
         let mut req_builder = self.client.request(method, url);
 

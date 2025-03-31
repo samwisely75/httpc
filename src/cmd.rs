@@ -4,14 +4,17 @@ pub use clap::Parser;
 use clap::builder::{OsStringValueParser, TypedValueParser};
 
 use crate::http::{HttpConnectionProfile, HttpRequestArgs};
-use crate::url::{Server, Url, UrlPath};
+use crate::url::{Endpoint, Url, UrlPath};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct ClapArgs {
     #[clap(help = "HTTP method (GET/POST/PUT/DELETE etc.)")]
     method: String,
-    #[clap(value_parser = OsStringValueParser::new().map(|s| Url::parse(s.to_str().unwrap())), help = "URL to send the request")]
+    #[clap(
+        value_parser = OsStringValueParser::new().map(|s| Url::parse(s.to_str().unwrap())), 
+        help = "Absolute or relative URL (profile must be configured for relative)"
+    )]
     url: Url,
     #[clap(help = "body text to send with the request")]
     body: Option<String>,
@@ -21,8 +24,6 @@ struct ClapArgs {
     user: Option<String>,
     #[clap(short = 'w', long, help = "password for basic authentication")]
     password: Option<String>,
-    #[clap(short = 'a', long, help = "API key for authentication")]
-    api_key: Option<String>,
     #[clap(short = 'r', long, help = "CA certificate PEM file path")]
     ca_cert: Option<String>,
     #[clap(
@@ -34,7 +35,7 @@ struct ClapArgs {
     #[clap(
         short = 'H',
         long = "header",
-        name = "KEY: VALUE",
+        name = "KEY:VALUE",
         help = "HTTP header to send with the request"
     )]
     headers: Vec<String>,
@@ -185,8 +186,8 @@ impl HttpConnectionProfile for CommandLineArgs {
         &self.headers
     }
 
-    fn server(&self) -> Option<&Server> {
-        self.url.to_server()
+    fn endpoint(&self) -> Option<&Endpoint> {
+        self.url.to_endpoint()
     }
 }
 
@@ -334,7 +335,7 @@ mod test {
     //     ));
     //     let merged_cmd = cmd_args.merge_req(req.as_ref());
     //     let merged_req: &dyn HttpRequestArgs = &merged_cmd;
-    //     let merged_url: &Server = merged_req.url_path().unwrap();
+    //     let merged_url: &Endpoint = merged_req.url_path().unwrap();
     //     let merged_headers = merged_req.headers();
 
     //     assert_eq!(merged_req.method(), Some(&"POST".to_string()));
