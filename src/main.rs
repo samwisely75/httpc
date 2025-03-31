@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
 }
 
 fn print_profile(profile: &impl HttpConnectionProfile) {
-    let endpoint = profile.endpoint().unwrap();
+    let endpoint = profile.server().unwrap();
     eprintln!("> connection:");
     eprintln!(">   host: {}", endpoint.host());
     eprintln!(
@@ -97,6 +97,10 @@ fn print_profile(profile: &impl HttpConnectionProfile) {
     profile.headers().iter().for_each(|(name, value)| {
         eprintln!(">    {name}: {value}");
     });
+
+    if profile.proxy().is_some() {
+        eprintln!(">   proxy: {}", profile.proxy().unwrap().to_string());
+    }
 }
 
 fn print_request(req: &impl HttpRequestArgs) {

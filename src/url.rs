@@ -1,5 +1,5 @@
 use regex::Regex;
-use std::fmt::{Display, Formatter};
+use std::{fmt::{Display, Formatter}, str::FromStr};
 
 const REGEX_PATTERNS_URL: &str = r"^(?P<scheme>[^:\/]+)?(:\/\/)?(?P<host>[^:\/\?]+)?(:(?P<port>\d+))?(?P<path>[^\?]*)(\?(?P<query>.*))?$";
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -8,14 +8,10 @@ pub struct Endpoint {
     port: Option<u16>,
     scheme: Option<String>,
 }
+impl FromStr for Endpoint {
+    type Err = String;
 
-impl Endpoint {
-    pub fn new(host: String, port: Option<u16>, scheme: Option<String>) -> Self {
-        Endpoint { host, port, scheme }
-    }
-
-    #[allow(dead_code)]
-    pub fn parse(s: &str) -> crate::utils::Result<Self> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let caps = Regex::new(REGEX_PATTERNS_URL)
             .unwrap()
             .captures(s)
@@ -41,7 +37,19 @@ impl Endpoint {
             .name("port")
             .map(|m| m.as_str().parse::<u16>().unwrap());
 
-        Ok(Self::new(host, port, scheme))
+        Ok(Endpoint { host, port, scheme })
+    }
+}
+impl Endpoint {
+    pub fn new(host: String, port: Option<u16>, scheme: Option<String>) -> Self {
+        Endpoint { host, port, scheme }
+    }
+
+    pub fn parse(s: &str) -> Self {
+        match Self::from_str(s) {
+            Ok(endpoint) => endpoint,
+            Err(_) => panic!("Failed to parse endpoint from string: {}", s),
+        }
     }
 
     pub fn scheme(&self) -> Option<&String> {
@@ -286,7 +294,7 @@ mod test {
 
         #[test]
         fn parse_should_parse_endpoint_with_scheme_host_and_port() -> crate::utils::Result<()> {
-            let endpoint = Endpoint::parse("http://example.com:8080")?;
+            let endpoint = Endpoint::parse("http://example.com:8080");
             assert_eq!(endpoint.scheme(), Some(&"http".to_string()));
             assert_eq!(endpoint.host(), "example.com");
             assert_eq!(endpoint.port(), Some(8080));
@@ -295,7 +303,7 @@ mod test {
 
         #[test]
         fn parse_should_parse_endpoint_without_port() -> crate::utils::Result<()> {
-            let endpoint = Endpoint::parse("http://example.com")?;
+            let endpoint = Endpoint::parse("http://example.com");
             assert_eq!(endpoint.scheme(), Some(&"http".to_string()));
             assert_eq!(endpoint.host(), "example.com");
             assert_eq!(endpoint.port(), None);
@@ -304,7 +312,7 @@ mod test {
 
         #[test]
         fn parse_should_parse_endpoint_with_host_only() -> crate::utils::Result<()> {
-            let endpoint = Endpoint::parse("example.com")?;
+            let endpoint = Endpoint::parse("example.com");
             assert_eq!(endpoint.scheme(), None);
             assert_eq!(endpoint.host(), "example.com");
             assert_eq!(endpoint.port(), None);

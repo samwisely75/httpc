@@ -12,12 +12,13 @@ use std::fmt::Debug;
 const DEFAULT_METHOD: &str = "GET";
 
 pub trait HttpConnectionProfile {
-    fn endpoint(&self) -> Option<&Endpoint>;
+    fn server(&self) -> Option<&Endpoint>;
     fn user(&self) -> Option<&String>;
     fn password(&self) -> Option<&String>;
     fn insecure(&self) -> Option<bool>;
     fn ca_cert(&self) -> Option<&String>;
     fn headers(&self) -> &HashMap<String, String>;
+    fn proxy(&self) -> Option<&Endpoint>;
 }
 
 pub trait HttpRequestArgs {
@@ -69,7 +70,7 @@ impl HttpClient {
         HttpClient {
             client,
             endpoint: args
-                .endpoint()
+                .server()
                 .expect("Endpoint cannot be empty when building HttpClient")
                 .clone(),
             user: args.user().cloned(),
@@ -123,17 +124,20 @@ impl HttpClient {
     }
 
     fn build_client(profile: &impl HttpConnectionProfile) -> Client {
+        // insecure access
         let insecure_access = profile.insecure().unwrap_or(false);
         let mut cli_builder = Client::builder()
             .danger_accept_invalid_certs(insecure_access)
             .danger_accept_invalid_hostnames(insecure_access);
 
+        // custom CA certificates
         if let Some(ca_cert) = profile.ca_cert() {
             let ca_cert = shellexpand::tilde(&ca_cert).to_string();
             let cert = Certificate::from_pem(&std::fs::read(ca_cert).unwrap()).unwrap();
             cli_builder = cli_builder.use_rustls_tls().add_root_certificate(cert);
         }
 
+        // default headers
         if !profile.headers().is_empty() {
             let headers = profile
                 .headers()
@@ -146,6 +150,12 @@ impl HttpClient {
                 })
                 .collect::<HeaderMap>();
             cli_builder = cli_builder.default_headers(headers);
+        }
+
+        // proxy
+        if let Some(proxy) = profile.proxy() {
+            let proxy_url = proxy.to_string();
+            cli_builder = cli_builder.proxy(reqwest::Proxy::all(proxy_url).unwrap());
         }
 
         let client = cli_builder.build().unwrap();
