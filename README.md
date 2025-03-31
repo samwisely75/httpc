@@ -76,6 +76,7 @@ For all available command line options, run `wiq -h` or `wiq --help`.
 - Support multiple compression (gzip, deflate, zstd)
 - Support multiple headers
 - Support custom CA certtificate for SSL/TLS
+- Support request through a HTTP proxy that doesn't require authentication
 - Enable skipping SSL/TLS server certificate validation
 - Provide verbose mode writes the details of request and response to the error output
 

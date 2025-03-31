@@ -7,12 +7,9 @@ use ini::{Ini, Properties};
 use std::collections::HashMap;
 
 pub const DEFAULT_INI_FILE_PATH: &str = "~/.wiq";
-pub const DEFAULT_SCHEME: &str = "http";
 pub const PROFILE_BLANK: &str = "none";
 
 const INI_HOST: &str = "host";
-const INI_PORT: &str = "port";
-const INI_SCHEME: &str = "scheme";
 const INI_USER: &str = "user";
 const INI_PASSWORD: &str = "password";
 const INI_CA_CERT: &str = "ca_cert";
@@ -140,35 +137,9 @@ impl IniProfileStore {
             section.get(key).map(|s| s.parse::<T>().unwrap())
         }
 
-        let host = try_get::<String>(&section, INI_HOST);
-
-        if host.is_none() {
-            return Err(
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("Missing 'host' entity in '{}' profile", name),
-                )
-                .into(),
-            );
-        }
-
-        let port = try_get::<u16>(&section, INI_PORT);
-        let scheme = if let Some(scheme) = try_get::<String>(&section, INI_SCHEME) {
-            Some(scheme)
-        } else {
-            Some(DEFAULT_SCHEME.to_string())
-        };
-        //    try_get::<String>(&section, INI_SCHEME).or(Some(DEFAULT_SCHEME.to_string()));
-
-        let endpoint = if let Some(host) = host {
-            Some(Endpoint::new(host, port, scheme))
-        } else {
-            None
-        };
-
         let profile = IniProfile {
             name: name.to_string(),
-            server: endpoint,
+            server: try_get::<Endpoint>(&section, INI_HOST),
             user: try_get(&section, INI_USER),
             password: try_get(&section, INI_PASSWORD),
             insecure: try_get::<bool>(&section, INI_INSECURE),
@@ -186,12 +157,7 @@ impl IniProfileStore {
         let mut section = ini.with_section(Some(profile.name.clone()));
 
         if profile.server().is_some() {
-            let endpoint = profile.server().unwrap();
-            section.set(INI_HOST, endpoint.host().to_string());
-            if endpoint.port().is_some() {
-                section.set(INI_PORT, endpoint.port().unwrap().to_string());
-            }
-            section.set(INI_SCHEME, endpoint.scheme().unwrap().to_string());
+            section.set(INI_HOST, profile.server().unwrap().to_string());
         }
         if profile.user().is_some() {
             section.set(INI_USER, profile.user().unwrap());
@@ -302,9 +268,7 @@ mod test {
     fn create_ini_file() -> Result<TempPath> {
         let content = format!(
             "[{}]\n\
-             host={}\n\
-             port={}\n\
-             scheme={}\n\
+             host={}://{}:{}\n\
              user={}\n\
              password={}\n\
              ca_cert={}\n\
@@ -313,9 +277,9 @@ mod test {
              @User-Agent={}\n\
              ",
             DEFAULT_INI_SECTION,
+            TEST_SCHEME,
             TEST_HOST,
             TEST_PORT,
-            TEST_SCHEME,
             TEST_USER,
             TEST_PASSWORD,
             TEST_CA_CERT,
