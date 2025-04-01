@@ -9,37 +9,72 @@ use crate::url::{Endpoint, Url, UrlPath};
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct ClapArgs {
-    #[clap(help = "HTTP method (GET/POST/PUT/DELETE etc.)")]
+    /// Method
+    /// Required. A HTTP method text that must be one of the ones defined in RFC 7231.
+    /// All letter will be transformed to upper case.
+    #[clap(
+        help = "HTTP method (GET/POST/PUT/DELETE/HEAD etc.)",
+        value_parser = OsStringValueParser::new().map(|s| s.to_str().unwrap().to_uppercase() as String),
+    )]
     method: String,
+
+    /// URL 
+    /// Required. String will be translated into Url object.
     #[clap(
         value_parser = OsStringValueParser::new().map(|s| Url::parse(s.to_str().unwrap())),
         help = "Absolute or relative URL (profile must be configured for relative)"
     )]
     url: Url,
+
+    /// Body
+    /// Optional. Body text to send with the request.
     #[clap(help = "body text to send with the request")]
     body: Option<String>,
+
+    /// Profile name
+    /// Required. Profile name to use for the request. Default is 'default'.
+    /// If the profile is not configured, the request will fail.
     #[clap(short = 'p', long, default_value = "default", help = "profile name")]
     profile: String,
+
+    /// User
+    /// Optional. Username for basic authentication.
     #[clap(short = 'u', long, help = "username for basic authentication")]
     user: Option<String>,
+
+    /// Password
+    /// Optional. Plaintext password for basic authentication.
     #[clap(short = 'w', long, help = "password for basic authentication")]
     password: Option<String>,
+
+    /// CA certificate
+    /// Optional. Path to the CA certificate PEM format file.
     #[clap(short = 'r', long, help = "CA certificate PEM file path")]
     ca_cert: Option<String>,
+
+    /// Insecure
+    /// Optional. Allow insecure server connections when using SSL. 
+    /// Same with the --insecure (-k) in curl.
     #[clap(
         short = 'k',
         long,
         help = "Allow insecure server connections when using SSL"
     )]
     insecure: bool,
+
+    /// Headers
+    /// Optional. HTTP headers to send with the request.
+    /// Format: KEY:VALUE. Multiple headers can be specified.
     #[clap(
         short = 'H',
         long = "header",
         name = "KEY:VALUE",
-        help = "HTTP header to send with the request"
+        help = "HTTP header to send with the request. Multiple values can be specified by repeating the flag.",
     )]
     headers: Vec<String>,
 
+    /// Verbose mode
+    /// Optional. Print verbose messages.
     #[clap(
         short = 'v',
         long,
@@ -48,6 +83,11 @@ struct ClapArgs {
     )]
     verbose: bool,
 
+    /// Proxy
+    /// Optional. HTTP proxy URL in <scheme>://<host>:<port> format.
+    /// If not specified, the request will be sent directly to the server.
+    /// Same with the --proxy (-x) in curl.
+    /// The string will be translated into Endpoint object.
     #[clap(
         short = 'x',
         long,
