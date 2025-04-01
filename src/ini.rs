@@ -121,8 +121,6 @@ impl IniProfileStore {
             }
         };
 
-        dbg!(&section);
-
         let mut headers = HashMap::<String, String>::new();
         for (key, value) in section.iter() {
             // here, we'll pick up only ones start with at sign
@@ -139,14 +137,12 @@ impl IniProfileStore {
             section.get(key).map(|s| s.parse::<T>().unwrap())
         }
 
-        let insecure = try_get::<bool>(&section, INI_INSECURE);
-
         let profile = IniProfile {
             name: name.to_string(),
             server: try_get::<Endpoint>(&section, INI_HOST),
             user: try_get(&section, INI_USER),
             password: try_get(&section, INI_PASSWORD),
-            insecure: insecure,
+            insecure: try_get::<bool>(&section, INI_INSECURE),
             ca_cert: try_get(&section, INI_CA_CERT),
             headers: headers.clone(),
             proxy: try_get::<Endpoint>(&section, INI_PROXY),

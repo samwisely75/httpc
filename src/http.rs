@@ -124,11 +124,8 @@ impl HttpClient {
     }
 
     fn build_client(profile: &impl HttpConnectionProfile) -> Client {
-        dbg!(profile.insecure());
-
         // insecure access
         let insecure_access = profile.insecure().unwrap_or(false);
-        dbg!(&insecure_access);
         let mut cli_builder = Client::builder()
             .danger_accept_invalid_certs(insecure_access)
             .danger_accept_invalid_hostnames(insecure_access);
