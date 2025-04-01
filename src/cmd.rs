@@ -18,7 +18,7 @@ struct ClapArgs {
     )]
     method: String,
 
-    /// URL 
+    /// URL
     /// Required. String will be translated into Url object.
     #[clap(
         value_parser = OsStringValueParser::new().map(|s| Url::parse(s.to_str().unwrap())),
@@ -53,7 +53,7 @@ struct ClapArgs {
     ca_cert: Option<String>,
 
     /// Insecure
-    /// Optional. Allow insecure server connections when using SSL. 
+    /// Optional. Allow insecure server connections when using SSL.
     /// Same with the --insecure (-k) in curl.
     #[clap(
         short = 'k',
@@ -69,7 +69,7 @@ struct ClapArgs {
         short = 'H',
         long = "header",
         name = "KEY:VALUE",
-        help = "HTTP header to send with the request. Multiple values can be specified by repeating the flag.",
+        help = "HTTP header to send with the request. Multiple values can be specified by repeating the flag."
     )]
     headers: Vec<String>,
 

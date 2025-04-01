@@ -11,7 +11,7 @@ use std::fmt::Debug;
 
 const DEFAULT_METHOD: &str = "GET";
 
-pub trait HttpConnectionProfile {
+pub trait HttpConnectionProfile: Debug {
     fn server(&self) -> Option<&Endpoint>;
     fn user(&self) -> Option<&String>;
     fn password(&self) -> Option<&String>;
@@ -21,7 +21,7 @@ pub trait HttpConnectionProfile {
     fn proxy(&self) -> Option<&Endpoint>;
 }
 
-pub trait HttpRequestArgs {
+pub trait HttpRequestArgs: Debug {
     fn method(&self) -> Option<&String>;
     fn url_path(&self) -> Option<&UrlPath>;
     fn body(&self) -> Option<&String>;
@@ -129,7 +129,6 @@ impl HttpClient {
         let mut cli_builder = Client::builder()
             .danger_accept_invalid_certs(insecure_access)
             .danger_accept_invalid_hostnames(insecure_access);
-
 
         // custom CA certificates
         if let Some(ca_cert) = profile.ca_cert() {
