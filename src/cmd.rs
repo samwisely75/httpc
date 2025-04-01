@@ -139,7 +139,7 @@ impl CommandLineArgs {
             user: args.user,
             password: args.password,
             ca_cert: args.ca_cert,
-            insecure: Some(args.insecure),
+            insecure: if args.insecure { Some(true) } else { None },
             headers: vec_to_hashmap(args.headers),
             proxy: args.proxy,
         }

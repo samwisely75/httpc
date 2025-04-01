@@ -121,6 +121,8 @@ impl IniProfileStore {
             }
         };
 
+        dbg!(&section);
+
         let mut headers = HashMap::<String, String>::new();
         for (key, value) in section.iter() {
             // here, we'll pick up only ones start with at sign
@@ -137,12 +139,14 @@ impl IniProfileStore {
             section.get(key).map(|s| s.parse::<T>().unwrap())
         }
 
+        let insecure = try_get::<bool>(&section, INI_INSECURE);
+
         let profile = IniProfile {
             name: name.to_string(),
             server: try_get::<Endpoint>(&section, INI_HOST),
             user: try_get(&section, INI_USER),
             password: try_get(&section, INI_PASSWORD),
-            insecure: try_get::<bool>(&section, INI_INSECURE),
+            insecure: insecure,
             ca_cert: try_get(&section, INI_CA_CERT),
             headers: headers.clone(),
             proxy: try_get::<Endpoint>(&section, INI_PROXY),
@@ -261,7 +265,7 @@ mod test {
     const TEST_PASSWORD: &str = "test_password";
     const TEST_CA_CERT: &str = "/etc/pki/ca/cert.crt";
     const TEST_CONTENT_TYPE: &str = "application/json";
-    const TEST_INSECURE: bool = false;
+    const TEST_INSECURE: bool = true;
     const TEST_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
     const DEFAULT_INI_SECTION: &str = "default";
 
@@ -271,8 +275,8 @@ mod test {
              host={}://{}:{}\n\
              user={}\n\
              password={}\n\
+             insecure={}\n\
              ca_cert={}\n\
-             insecure=false\n\
              @Content-Type={}\n\
              @User-Agent={}\n\
              ",
@@ -282,6 +286,7 @@ mod test {
             TEST_PORT,
             TEST_USER,
             TEST_PASSWORD,
+            TEST_INSECURE,
             TEST_CA_CERT,
             TEST_CONTENT_TYPE,
             TEST_USER_AGENT
@@ -410,7 +415,7 @@ mod test {
         }
 
         fn insecure(&self) -> Option<bool> {
-            Some(false)
+            Some(TEST_INSECURE)
         }
 
         fn ca_cert(&self) -> Option<&String> {
