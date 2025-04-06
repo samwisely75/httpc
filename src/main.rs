@@ -1,5 +1,5 @@
 mod cmd;
-mod encoder;
+mod decoder;
 mod http;
 mod ini;
 mod stdio;
@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
 fn init_tracing_subscriber() -> () {
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::from_env("WIQ_LOG_LEVEL")
+            EnvFilter::from_env(format!("{}_LOG_LEVEL", env!("CARGO_PKG_NAME").to_uppercase()))
                 .add_directive("reqwest=warn".parse().unwrap())
                 .add_directive("hyper=warn".parse().unwrap())
                 .add_directive("tokio=warn".parse().unwrap())

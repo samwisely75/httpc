@@ -1,5 +1,5 @@
 [package]
-name = "wiq"
+name = "webcat"
 version = "0.1.0"
 authors = ["Satoshi Iizuka"]
 description = "Run an HTTP request and print the result"
@@ -20,4 +20,6 @@ atty = "0.2.14"
 regex = "1.11.1"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = [ "chrono", "env-filter" ] }
+encoding_rs = "0.8.35"
+bytes = "1.10.1"
 

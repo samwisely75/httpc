@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'wiq'",
+            "name": "Debug executable 'webcat'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=wiq",
-                    "--package=wiq"
+                    "--bin=webcat",
+                    "--package=webcat"
                 ],
                 "filter": {
-                    "name": "wiq",
+                    "name": "webcat",
                     "kind": "bin"
                 }
             },
@@ -28,15 +28,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'wiq'",
+            "name": "Debug unit tests in executable 'webcat'",
             "cargo": {
                 "args": [
                     "test",
-                    "--bin=wiq",
-                    "--package=wiq"
+                    "--bin=webcat",
+                    "--package=webcat"
                 ],
                 "filter": {
-                    "name": "wiq",
+                    "name": "webcat",
                     "kind": "bin"
                 }
             },

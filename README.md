@@ -1,8 +1,8 @@
-# wiq
+# webcat
 
-[![GitHub build](https://github.com/elasticsatch/wiq/actions/workflows/rust.yml/badge.svg)](https://github.com/elasticsatch/wiq/actions/workflows/rust.yml)
+[![GitHub build](https://github.com/blueeaglesam/webcat/actions/workflows/rust.yml/badge.svg)](https://github.com/blueeaglesam/webcat/actions/workflows/rust.yml)
 
-A light-weight profile-based HTTP client allows you to talk to web servers with a minimal effort. 
+A light-weight profile-based HTTP client allows you to talk to web servers with a minimal effort.
 
 ## Usage
 
@@ -11,13 +11,13 @@ A light-weight profile-based HTTP client allows you to talk to web servers with 
 The simplest usage is to run the following command in your terminal: 
 
 ```sh
-wiq GET /
+webcat GET /
 ```
 
 You can `PUT` or `POST` with simple command like this:
 
 ```sh
-wiq PUT _cluster/settings '{
+webcat PUT _cluster/settings '{
     "persistent": {
         "cluster.routing.allocation.enabled": "primaries"
     }
@@ -38,32 +38,32 @@ echo '{
         }
     }
 }' \
-| wiq GET my-index/_search \
+| webcat GET my-index/_search \
 | jq -r '.hits.hits[] | [ ._id, ._source.name ] | @tsv' \
 | sed -e "s/\t/ /g"
 ```
 
 ### Switch Connection via Profile
 
-The commands above are using `default` profile in your `~/.wiq`, a configuration file that contains the base url (e.g. `https://my-remote-server:9200`), user, password, and other parameters. You can switch the context by specifying another profile name in `--profile` (or `-p`). 
+The commands above are using `default` profile in your `~/.webcat`, a configuration file that contains the base url (e.g. `https://my-remote-server:9200`), user, password, and other parameters. You can switch the context by specifying another profile name in `--profile` (or `-p`). 
 
 ```sh
-wiq -p my-dev-cluster GET /_cluster/settings
-wiq -p cust-qa-cluster GET /_cluster/settings
+webcat -p my-dev-cluster GET /_cluster/settings
+webcat -p cust-qa-cluster GET /_cluster/settings
 ```
 
 ### Override/Aurgment Configurations
 
- You can run the command without configuring `~/.wiq` by providing a URL starts with `http://` or `https://` directly into the `URL` like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration.
+ You can run the command without configuring `~/.webcat` by providing a URL starts with `http://` or `https://` directly into the `URL` like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration.
 
 ```sh
-wiq GET https://my-local-server:9200/_cluster/health \
+webcat GET https://my-local-server:9200/_cluster/health \
     --user elastic \
     --password changeme \
     --ca-cert /path/to/ca.pem
 ```
 
-For all available command line options, run `wiq -h` or `wiq --help`.
+For all available command line options, run `webcat -h` or `webcat --help`.
 
 ## Features
 
@@ -83,12 +83,12 @@ For all available command line options, run `wiq -h` or `wiq --help`.
 ## Installation
 
 1. Download the binary in releases according to your platform.
-1. Expand .tar.gz and copy `wiq` to where `$PATH` is thru (e.g. `/usr/local/bin`)
-1. Run `wiq --help` to test it.
+1. Expand .tar.gz and copy `webcat` to where `$PATH` is thru (e.g. `/usr/local/bin`)
+1. Run `webcat --help` to test it.
 
 ## Configuration
 
-The configuration can be done through `~/.wiq` file, which is in a good-old INI format that contains more than one profiles, consisting of more than one key-value pairs. You can switch the profile by specifying `--profile` (or `-p`) command line option. If you don't specify the profile, `default` will be used.
+The configuration can be done through `~/.webcat` file, which is in a good-old INI format that contains more than one profiles, consisting of more than one key-value pairs. You can switch the profile by specifying `--profile` (or `-p`) command line option. If you don't specify the profile, `default` will be used.
 
 ```ini
 [default]
@@ -98,7 +98,7 @@ password = changeme
 insecure = false
 ca_cert = /path/to/ca.pem
 @content-type = application/json
-@user-agent = wiq/0.1
+@user-agent = webcat/0.1
 @accept = */*
 @accept-encoding = gzip, deflate
 @accept-langugage = en-US,en;q=0.9
