@@ -1,6 +1,6 @@
 use crate::url::{Url, UrlPath};
 use crate::utils::Result;
-use crate::{encoder::*, url::Endpoint};
+use crate::{decoder::*, url::Endpoint};
 
 use reqwest::{
     Certificate, Client, Method, Request, StatusCode,
@@ -79,28 +79,28 @@ impl HttpClient {
     }
 
     pub async fn request(&self, args: &impl HttpRequestArgs) -> Result<HttpResponse> {
+        // Build a request
         let req = self.build_request(args);
+        // contact the server and receive the response
         let res = self.client.execute(req).await?;
+
+        // Acquire the response status and headers
         let headers = res.headers().clone();
         let status = res.status();
-        let body_bytes = res.bytes().await?;
+
+        // Decode the response body (decompress and decode to UTF-8/SHIFT-JIS)
         let default_encoding = HeaderValue::from_static(ENC_NONE);
         let content_encoding = headers
             .get("content-encoding")
             .unwrap_or(&default_encoding)
             .to_str()?;
-        let body = match content_encoding {
-            ENC_NONE => String::from_utf8(body_bytes.to_vec())?,
-            ENC_GZIP => decode_gzip(&body_bytes)?,
-            ENC_DEFLATE => decode_deflate(&body_bytes)?,
-            ENC_ZSTD => decode_zstd(&body_bytes)?,
-            _ => return Err("Unsupported encoding".into()),
-        };
+        let body_bytes = res.bytes().await?;
+        let body_string = decode_bytes(&body_bytes, content_encoding)?;
 
         Ok(HttpResponse {
-            status,
-            headers,
-            body,
+            status: status,
+            headers: headers,
+            body: body_string,
         })
     }
 
