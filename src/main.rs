@@ -76,26 +76,29 @@ async fn main() -> Result<()> {
 fn init_tracing_subscriber() -> () {
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::from_env(format!("{}_LOG_LEVEL", env!("CARGO_PKG_NAME").to_uppercase()))
-                .add_directive("reqwest=warn".parse().unwrap())
-                .add_directive("hyper=warn".parse().unwrap())
-                .add_directive("tokio=warn".parse().unwrap())
-                .add_directive("tracing=warn".parse().unwrap())
-                .add_directive("tracing_subscriber=warn".parse().unwrap())
-                .add_directive("tower_http=warn".parse().unwrap())
-                .add_directive("tower=warn".parse().unwrap())
-                .add_directive("tokio_util=warn".parse().unwrap())
-                .add_directive("tokio_rustls=warn".parse().unwrap())
-                .add_directive("rustls=warn".parse().unwrap())
-                .add_directive("rustls_pemfile=warn".parse().unwrap())
-                .add_directive("native_tls=warn".parse().unwrap())
-                .add_directive("tokio_util=warn".parse().unwrap())
-                .add_directive("tokio_stream=warn".parse().unwrap())
-                .add_directive("tokio_io=warn".parse().unwrap())
-                .add_directive("tokio_timer=warn".parse().unwrap())
-                .add_directive("tokio_sync=warn".parse().unwrap())
-                .add_directive("tokio_task=warn".parse().unwrap())
-                .add_directive("tokio_reactor=warn".parse().unwrap()),
+            EnvFilter::from_env(format!(
+                "{}_LOG_LEVEL",
+                env!("CARGO_PKG_NAME").to_uppercase()
+            ))
+            .add_directive("reqwest=warn".parse().unwrap())
+            .add_directive("hyper=warn".parse().unwrap())
+            .add_directive("tokio=warn".parse().unwrap())
+            .add_directive("tracing=warn".parse().unwrap())
+            .add_directive("tracing_subscriber=warn".parse().unwrap())
+            .add_directive("tower_http=warn".parse().unwrap())
+            .add_directive("tower=warn".parse().unwrap())
+            .add_directive("tokio_util=warn".parse().unwrap())
+            .add_directive("tokio_rustls=warn".parse().unwrap())
+            .add_directive("rustls=warn".parse().unwrap())
+            .add_directive("rustls_pemfile=warn".parse().unwrap())
+            .add_directive("native_tls=warn".parse().unwrap())
+            .add_directive("tokio_util=warn".parse().unwrap())
+            .add_directive("tokio_stream=warn".parse().unwrap())
+            .add_directive("tokio_io=warn".parse().unwrap())
+            .add_directive("tokio_timer=warn".parse().unwrap())
+            .add_directive("tokio_sync=warn".parse().unwrap())
+            .add_directive("tokio_task=warn".parse().unwrap())
+            .add_directive("tokio_reactor=warn".parse().unwrap()),
         )
         .with_writer(std::io::stderr)
         .with_timer(ChronoLocal::rfc_3339())
@@ -120,7 +123,13 @@ fn print_profile(profile: &impl HttpConnectionProfile) {
             ">   ca-cert: {}",
             profile.ca_cert().unwrap_or(&"<none>".to_string())
         );
-        eprintln!(">   verify-cert: {}", !profile.insecure().unwrap());
+        eprintln!(
+            ">   insecure: {}",
+            profile
+                .insecure()
+                .map(|x| x.to_string())
+                .unwrap_or("<none>".to_string())
+        );
     }
 
     if profile.user().is_some() {
@@ -143,17 +152,10 @@ fn print_profile(profile: &impl HttpConnectionProfile) {
 
 #[tracing::instrument]
 fn print_request(req: &impl HttpRequestArgs) {
+    let url = req.url_path().map(|u| u.to_string()).unwrap_or("<none>".to_string());
     eprintln!("> request:");
     eprintln!(">   method: {}", req.method().unwrap());
-    eprintln!(">   url: {}", req.url_path().unwrap());
-    eprintln!(">   path: {}", req.url_path().unwrap().path());
-    eprintln!(
-        ">   query: {}",
-        req.url_path()
-            .unwrap()
-            .query()
-            .unwrap_or(&"<none>".to_string())
-    );
+    eprintln!(">   path: {}", url);
     eprintln!(
         ">   body: {}",
         req.body()

@@ -1,10 +1,10 @@
 use crate::utils::Result;
+use bytes::Bytes;
 use encoding_rs::SHIFT_JIS;
 use flate2::read::DeflateDecoder;
 use flate2::read::GzDecoder;
 use std::io::Read;
 use std::str;
-use bytes::Bytes;
 use zstd;
 
 pub const ENC_NONE: &str = ":plaintext:";
@@ -34,7 +34,6 @@ pub fn decode_zstd(data: &[u8]) -> Result<Bytes> {
     Ok(Bytes::copy_from_slice(&decoded_data))
 }
 
-
 pub fn decode_bytes(data: &[u8], encoding: &str) -> Result<String> {
     // Decompress the body bytes based on the encoding
     let body_bytes = match encoding {
@@ -49,7 +48,7 @@ pub fn decode_bytes(data: &[u8], encoding: &str) -> Result<String> {
     let body = match String::from_utf8(body_bytes.to_vec()) {
         Ok(s) => s,
         Err(utf8e) => {
-            let (r , _, sjis_error) = SHIFT_JIS.decode(&body_bytes);
+            let (r, _, sjis_error) = SHIFT_JIS.decode(&body_bytes);
             if sjis_error {
                 return Err(format!("Failed to decode body with utf8/shift-jis: {}", utf8e).into());
             }
