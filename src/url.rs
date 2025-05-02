@@ -1,11 +1,13 @@
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter},
     str::FromStr,
 };
 
 const REGEX_PATTERNS_URL: &str = r"^(?P<scheme>[^:\/]+)?(:\/\/)?(?P<host>[^:\/\?]+)?(:(?P<port>\d+))?(?P<path>[^\?]*)(\?(?P<query>.*))?$";
-#[derive(Debug, Clone, PartialEq, Eq)]
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Endpoint {
     host: String,
     port: Option<u16>,
@@ -86,7 +88,7 @@ impl Display for Endpoint {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UrlPath {
     path: String,
     query: Option<String>,
@@ -126,7 +128,7 @@ impl Display for UrlPath {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Url {
     endpoint: Option<Endpoint>,
     path: Option<UrlPath>,

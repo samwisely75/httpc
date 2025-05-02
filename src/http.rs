@@ -33,6 +33,7 @@ pub struct HttpResponse {
     status: StatusCode,
     headers: HeaderMap,
     body: String,
+    json: Option<serde_json::Value>,
 }
 
 impl HttpResponse {
@@ -46,6 +47,10 @@ impl HttpResponse {
 
     pub fn headers(&self) -> &HeaderMap {
         &self.headers
+    }
+
+    pub fn json(&self) -> Option<&serde_json::Value> {
+        self.json.as_ref()
     }
 }
 
@@ -96,11 +101,21 @@ impl HttpClient {
             .to_str()?;
         let body_bytes = res.bytes().await?;
         let body_string = decode_bytes(&body_bytes, content_encoding)?;
+        let content_type = headers
+            .get("content-type")
+            .unwrap_or(&default_encoding)
+            .to_str()?;
+        let json = if content_type.contains("application/json") {
+            Some(serde_json::from_str(&body_string)?)
+        } else {
+            None
+        };
 
         Ok(HttpResponse {
             status: status,
             headers: headers,
             body: body_string,
+            json
         })
     }
 

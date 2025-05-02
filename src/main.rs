@@ -63,14 +63,22 @@ async fn main() -> Result<()> {
         print_response(&res);
     }
 
+    print_result(&res);
+
+    Ok(())
+}
+
+fn print_result(res: &HttpResponse) {
     // Print the response body
     if res.status() == StatusCode::OK {
-        println!("{}", res.body());
+        if res.json().is_some() {
+            println!("{}", serde_json::to_string_pretty(res.json().as_ref().unwrap()).unwrap());
+        } else {
+            println!("{}", res.body());
+        }
     } else {
         eprintln!("{}: {}", res.status(), res.body());
     }
-
-    Ok(())
 }
 
 fn init_tracing_subscriber() -> () {
