@@ -165,11 +165,13 @@ sudo cp target/release/webly /usr/local/bin/
 ## Quick Start
 
 1. **Simple GET request to any URL:**
+
    ```bash
    webly GET https://httpbin.org/get
    ```
 
 2. **Create a profile for repeated use:**
+
    ```bash
    # Create ~/.webly file
    echo "[api]
@@ -180,6 +182,7 @@ sudo cp target/release/webly /usr/local/bin/
    ```
 
 3. **Use the profile:**
+
    ```bash
    webly -p api GET /users/me
    ```
@@ -221,6 +224,7 @@ password = admin
 ### Configuration Options
 
 #### Connection Settings
+
 - `host` - Base URL for requests (required for relative URLs)
 - `user` - Username for basic authentication
 - `password` - Password for basic authentication
@@ -228,7 +232,9 @@ password = admin
 - `insecure` - Skip SSL/TLS certificate verification (true/false)
 
 #### HTTP Headers
+
 Any key starting with `@` becomes an HTTP header:
+
 - `@content-type` → `Content-Type` header
 - `@authorization` → `Authorization` header
 - `@user-agent` → `User-Agent` header
@@ -255,7 +261,7 @@ webly -p staging --user different-user GET /api/data
 
 # Override host entirely
 webly GET https://completely-different-host.com/api
-``` 
+```
 
 ## Examples
 
@@ -364,6 +370,7 @@ webly -v GET https://httpbin.org/get
 ```
 
 This shows:
+
 - Full request URL and headers
 - Response status and headers
 - Timing information
@@ -479,4 +486,3 @@ cargo run -- GET https://httpbin.org/get
 - [ ] HTTP/2 support
 - [ ] Configuration file validation
 - [ ] Shell completion scripts
-
