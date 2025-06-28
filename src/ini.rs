@@ -6,7 +6,7 @@ use crate::utils::Result;
 use ini::{Ini, Properties};
 use std::collections::HashMap;
 
-pub const DEFAULT_INI_FILE_PATH: &str = "~/.webly/config";
+pub const DEFAULT_INI_FILE_PATH: &str = "~/.webly/profiles";
 pub const PROFILE_BLANK: &str = "none";
 
 const INI_HOST: &str = "host";
@@ -313,7 +313,7 @@ mod test {
     }
 
     fn test_profile(path: &str) -> Result<IniProfile> {
-        let profile = IniProfileStore::new(&path)
+        let profile = IniProfileStore::new(path)
             .get_profile(DEFAULT_INI_SECTION)?
             .unwrap();
         assert!(profile.server().is_some());
@@ -371,9 +371,9 @@ mod test {
         let temp_file = NamedTempFile::new()?;
         let path = temp_file.path().to_str().unwrap().to_string();
 
-        let _ = IniProfileStore::new(&path).put_profile(&profile)?;
+        IniProfileStore::new(&path).put_profile(&profile)?;
         let _ = test_profile(&path)?;
-        let _ = delete_ini_file(&path)?;
+        delete_ini_file(&path)?;
 
         Ok(())
     }
@@ -445,7 +445,7 @@ mod test {
 
         let mut original = IniProfile {
             name: DEFAULT_INI_SECTION.to_string(),
-            server: Some(Endpoint::parse(&"https://localhost:8081")?),
+            server: Some(Endpoint::parse("https://localhost:8081")?),
             user: None,
             password: None,
             insecure: Some(TEST_INSECURE),
@@ -458,7 +458,7 @@ mod test {
         headers.insert("content-type".to_string(), "text/html".to_string());
 
         let merging = TestArgs::new(
-            &Endpoint::parse(&"http://example.com")?,
+            &Endpoint::parse("http://example.com")?,
             "test_user",
             "test_password",
             "/etc/pki/ca/cert.crt",
@@ -631,16 +631,14 @@ mod test {
 
     #[test]
     fn test_multiple_profiles_in_same_file() -> Result<()> {
-        let content = format!(
-            "[profile1]\n\
+        let content = "[profile1]\n\
              host=https://server1.com\n\
              user=user1\n\
              \n\
              [profile2]\n\
              host=https://server2.com\n\
              user=user2\n\
-             "
-        );
+             ".to_string();
 
         let mut file = NamedTempFile::new()?;
         file.write_all(content.as_bytes())?;

@@ -124,7 +124,7 @@ webly --help
 
 ## Features
 
-- **Profile-based configuration** - Store connection details in `~/.webly` for reuse
+- **Profile-based configuration** - Store connection details in `~/.webly/profiles` for reuse
 - **Multiple HTTP methods** - Support GET, POST, PUT, DELETE, HEAD, etc.
 - **Authentication support** - Basic auth, custom headers
 - **SSL/TLS support** - Custom CA certificates, insecure mode option
@@ -133,7 +133,6 @@ webly --help
 - **Multiple compression** - gzip, deflate, zstd
 - **Flexible URL handling** - Absolute or relative URLs with profile base
 - **Verbose mode** - Detailed request/response information
-- **Auto redirection** - Automatic following of HTTP redirects
 
 ## Installation
 
@@ -173,12 +172,13 @@ sudo cp target/release/webly /usr/local/bin/
 2. **Create a profile for repeated use:**
 
    ```bash
-   # Create ~/.webly file
+   # Create ~/.webly directory and profiles file
+   mkdir -p ~/.webly
    echo "[api]
    host = https://api.example.com
    user = your-username
    password = your-password
-   @content-type = application/json" > ~/.webly
+   @content-type = application/json" > ~/.webly/profiles
    ```
 
 3. **Use the profile:**
@@ -191,7 +191,7 @@ sudo cp target/release/webly /usr/local/bin/
 
 ### Configuration File Location
 
-webly looks for configuration in `~/.webly` (on Unix/Linux/macOS) or `%USERPROFILE%\.webly` (on Windows).
+webly looks for configuration in `~/.webly/profiles` (on Unix/Linux/macOS) or `%USERPROFILE%\.webly\profiles` (on Windows).
 
 ### Configuration Format
 
@@ -318,7 +318,8 @@ webly -p elastic PUT /my-index/_doc/1 '{
 
 ```bash
 # Set up profiles for different environments
-cat > ~/.webly << EOF
+mkdir -p ~/.webly
+cat > ~/.webly/profiles << EOF
 [dev]
 host = http://localhost:3000
 @content-type = application/json
@@ -353,7 +354,7 @@ A: Make sure webly is in your PATH. Try `which webly` or reinstall following the
 A: Use `--insecure` to skip certificate validation, or provide a CA certificate with `--ca-cert /path/to/ca.pem`.
 
 **Q: Profile not found**
-A: Check that `~/.webly` exists and contains the profile. Use `webly -p nonexistent GET /` to see the error.
+A: Check that `~/.webly/profiles` exists and contains the profile. Use `webly -p nonexistent GET /` to see the error.
 
 **Q: Authentication failures**
 A: Verify credentials in your profile or override with `--user` and `--password` flags.
@@ -382,7 +383,7 @@ Check your configuration file:
 
 ```bash
 # View current configuration
-cat ~/.webly
+cat ~/.webly/profiles
 
 # Test with a simple request
 webly -p your-profile GET /simple/endpoint

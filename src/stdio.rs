@@ -231,8 +231,9 @@ mod tests {
         assert!(regex::Regex::new(r"^[YyNn]$").is_ok());
         assert!(regex::Regex::new(r"\d+").is_ok());
 
-        // Test invalid regex
-        assert!(regex::Regex::new(r"[unclosed").is_err());
+        // Test invalid regex (unclosed character class)
+        let invalid_regex = "[unclosed";
+        assert!(regex::Regex::new(invalid_regex).is_err());
     }
 
     #[test]
