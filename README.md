@@ -12,14 +12,179 @@ A lightweight, profile-based HTTP client that allows you to talk to web servers 
 
 - [Features](#features)
 - [Installation](#installation)
+- [Configuration](#configuration)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
-- [Configuration](#configuration)
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
 - [Why webly and not curl?](#why-webly-and-not-curl)
-- [Contributing](#contributing)
 - [License](#license)
+
+## Features
+
+**Profile-based simplicity** - Transform complex curl commands into simple, memorable requests. Store connection details, authentication, and headers in `~/.webly/profiles` once, then use clean relative URLs like `webly -p prod GET /api/users` instead of repeating lengthy curl parameters every time.
+
+Plus all the HTTP client features you expect:
+
+- **Multiple HTTP methods** - Support GET, POST, PUT, DELETE, HEAD, etc.
+- **Authentication support** - Basic auth, custom headers
+- **SSL/TLS support** - Custom CA certificates, insecure mode option
+- **Proxy support** - HTTP proxy configuration  
+- **Standard input support** - Read request body from stdin
+- **Multiple compression** - gzip, deflate, zstd
+- **Flexible URL handling** - Absolute or relative URLs with profile base
+- **Verbose mode** - Detailed request/response information
+
+## Installation
+
+Download the appropriate binary from [releases](https://github.com/blueeaglesam/webly/releases) for your platform:
+
+**Linux/macOS:**
+
+```bash
+# Download and extract
+curl -L https://github.com/blueeaglesam/webly/releases/latest/download/webly-linux-x64.tar.gz | tar -xz
+sudo mv webly /usr/local/bin/
+
+# Or for macOS
+curl -L https://github.com/blueeaglesam/webly/releases/latest/download/webly-macos-x64.tar.gz | tar -xz
+sudo mv webly /usr/local/bin/
+```
+
+**Windows:**
+
+```powershell
+# Download the .zip file from releases and extract
+# Add webly.exe to your PATH or place in a directory that's in PATH
+```
+
+**From crates.io (requires Rust):**
+
+```bash
+cargo install webly
+```
+
+**Build from source:**
+
+```bash
+git clone https://github.com/blueeaglesam/webly.git
+cd webly
+cargo build --release
+sudo cp target/release/webly /usr/local/bin/  # Linux/macOS
+# or copy target\release\webly.exe to PATH on Windows
+```
+
+Test the installation: `webly --help`
+
+No additional dependencies required - webly is a single, self-contained binary.
+
+## Configuration
+
+### Configuration File Location
+
+webly looks for configuration in `~/.webly/profiles` (on Unix/Linux/macOS) or `%USERPROFILE%\.webly\profiles` (on Windows).
+
+### Configuration Format
+
+The configuration file uses INI format with multiple profiles. Each profile contains connection details and default headers.
+
+```ini
+[default]
+host = https://api.example.com
+user = your-username
+password = your-password
+insecure = false
+ca_cert = /path/to/ca.pem
+@content-type = application/json
+@user-agent = webly/0.1
+@accept = application/json
+@accept-encoding = gzip, deflate
+
+[staging]
+host = https://staging-api.example.com  
+user = staging-user
+password = staging-pass
+@content-type = application/json
+
+[local]
+host = http://localhost:8080
+user = admin
+password = admin
+```
+
+### Configuration Options
+
+#### Connection Settings
+
+- `host` - Base URL for requests (required for relative URLs)
+- `user` - Username for basic authentication
+- `password` - Password for basic authentication
+- `ca_cert` - Path to CA certificate file for SSL/TLS
+- `insecure` - Skip SSL/TLS certificate verification (true/false)
+
+#### HTTP Headers
+
+Any key starting with `@` becomes an HTTP header. Please feel free to add any custom headers you need.
+
+Examples:
+
+- `@content-type` → `Content-Type` header
+- `@authorization` → `Authorization` header
+- `@user-agent` → `User-Agent` header
+- `@accept` → `Accept` header
+
+### Profile Selection
+
+```bash
+# Use default profile
+webly GET /api/endpoint
+
+# Use specific profile
+webly -p staging GET /api/endpoint
+webly --profile production GET /api/endpoint
+```
+
+### Override with Command Line Options
+
+Command line options override profile settings:
+
+```bash
+# Override user from profile
+webly -p staging --user different-user GET /api/data
+
+# Override host entirely
+webly GET https://completely-different-host.com/api
+```
+
+## Quick Start
+
+1. **Create a profile for your favorite API:**
+
+   ```bash
+   # Create ~/.webly directory and profiles file
+   mkdir -p ~/.webly
+   echo "[swapi]
+   host = https://swapi.dev/api
+   @content-type = application/json" > ~/.webly/profiles
+   ```
+
+2. **Use the profile to explore the Star Wars universe:**
+
+   ```bash
+   # Now you can use short URLs to explore the galaxy!
+   webly -p swapi GET /people/1/        # Luke Skywalker
+   webly -p swapi GET /people/4/        # Darth Vader
+   webly -p swapi GET /starships/10/    # Millennium Falcon
+   webly -p swapi GET /films/1/         # A New Hope
+   ```
+
+3. **Or override with full URLs when needed:**
+
+   ```bash
+   # You can always use absolute URLs to override the profile
+   webly GET https://httpbin.org/get
+   webly GET https://swapi.dev/api/planets/
+   ```
 
 ## Usage
 
@@ -142,147 +307,6 @@ For all available options, run:
 
 ```bash
 webly --help
-```
-
-## Features
-
-- **Profile-based configuration** - Store connection details in `~/.webly/profiles` for reuse
-- **Multiple HTTP methods** - Support GET, POST, PUT, DELETE, HEAD, etc.
-- **Authentication support** - Basic auth, custom headers
-- **SSL/TLS support** - Custom CA certificates, insecure mode option
-- **Proxy support** - HTTP proxy configuration
-- **Standard input support** - Read request body from stdin
-- **Multiple compression** - Supports gzip, deflate, zstd
-- **Flexible URL handling** - Absolute or relative URLs with profile base
-- **Verbose mode** - Detailed request/response information
-
-## Installation
-
-### From Pre-built Binaries
-
-1. Download the binary from [releases](https://github.com/blueeaglesam/webly/releases) for your platform
-2. Extract the `.tar.gz` file: `tar -xzf webly-*.tar.gz`
-3. Copy `webly` to a directory in your `$PATH` (e.g., `/usr/local/bin`)
-4. Test the installation: `webly --help`
-
-### From Source (Rust Required)
-
-```bash
-# Install from crates.io
-cargo install webly
-
-# Or build from source
-git clone https://github.com/blueeaglesam/webly.git
-cd webly
-cargo build --release
-sudo cp target/release/webly /usr/local/bin/
-```
-
-### System Requirements
-
-- macOS, Linux, or Windows
-- No additional dependencies required
-
-## Quick Start
-
-1. **Simple GET request to any URL:**
-
-   ```bash
-   webly GET https://httpbin.org/get
-   ```
-
-2. **Create a profile for repeated use:**
-
-   ```bash
-   # Create ~/.webly directory and profiles file
-   mkdir -p ~/.webly
-   echo "[api]
-   host = https://api.example.com
-   user = your-username
-   password = your-password
-   @content-type = application/json" > ~/.webly/profiles
-   ```
-
-3. **Use the profile:**
-
-   ```bash
-   webly -p api GET /users/me
-   ```
-
-## Configuration
-
-### Configuration File Location
-
-webly looks for configuration in `~/.webly/profiles` (on Unix/Linux/macOS) or `%USERPROFILE%\.webly\profiles` (on Windows).
-
-### Configuration Format
-
-The configuration file uses INI format with multiple profiles. Each profile contains connection details and default headers.
-
-```ini
-[default]
-host = https://api.example.com
-user = your-username
-password = your-password
-insecure = false
-ca_cert = /path/to/ca.pem
-@content-type = application/json
-@user-agent = webly/0.1
-@accept = application/json
-@accept-encoding = gzip, deflate
-
-[staging]
-host = https://staging-api.example.com  
-user = staging-user
-password = staging-pass
-@content-type = application/json
-
-[local]
-host = http://localhost:8080
-user = admin
-password = admin
-```
-
-### Configuration Options
-
-#### Connection Settings
-
-- `host` - Base URL for requests (required for relative URLs)
-- `user` - Username for basic authentication
-- `password` - Password for basic authentication
-- `ca_cert` - Path to CA certificate file for SSL/TLS
-- `insecure` - Skip SSL/TLS certificate verification (true/false)
-
-#### HTTP Headers
-
-Any key starting with `@` becomes an HTTP header:
-
-- `@content-type` → `Content-Type` header
-- `@authorization` → `Authorization` header
-- `@user-agent` → `User-Agent` header
-- `@accept` → `Accept` header
-
-### Profile Selection
-
-```bash
-# Use default profile
-webly GET /api/endpoint
-
-# Use specific profile
-webly -p staging GET /api/endpoint
-webly --profile production GET /api/endpoint
-```
-
-### Command Line Override
-
-Command line options override profile settings:
-
-```bash
-# Override user from profile
-webly -p staging --user different-user GET /api/data
-
-# Override host entirely
-webly GET https://completely-different-host.com/api
 ```
 
 ## Examples
@@ -413,7 +437,7 @@ webly -p your-profile GET /simple/endpoint
 
 ## Why webly and not curl?
 
-As an Elasticsearch consultant, I work with Elasticsearch clusters day in and day out. Kibana Dev Tools is ideal, but often unavailable in client environments where I need to SSH into nodes, check logs, and run diagnostic queries from the terminal.
+I work with Elasticsearch clusters day in and day out. Kibana Dev Tools is ideal, but often unavailable in client environments where I need to SSH into nodes, check logs, and run diagnostic queries from the terminal.
 
 `curl` works, but it becomes tedious with repetitive parameters:
 
@@ -428,11 +452,11 @@ In Kibana Dev Tools, this is simply:
 GET /_cat/indices?v
 ```
 
-I wanted that same simplicity in the terminal by bringing a profile system to it for easily switching between multiple clusters—like `aws-cli` does.
+I wanted that same simplicity in the terminal by bringing a profile system into it for easily switching between multiple clusters like `aws-cli`.
 
 ### Why Rust?
 
-Python and Bash scripts work but become unwieldy and hard to maintain. Sometimes I even need to work with Python 2.6/2.7, which complicates the code due to compatibility issues. Rust works perfectly because:
+Python and Bash scripts work but become unwieldy and hard to maintain. Sometimes I even need to work with Python 2.6/2.7 that complicate the codes due to the compatibility issues. Rust works perfectly as:
 
 - **Single binary** - No runtime dependencies, easy deployment
 - **Performance** - Native speed, as fast as curl
@@ -442,8 +466,6 @@ Python and Bash scripts work but become unwieldy and hard to maintain. Sometimes
 
 ---
 
-**Repository:** [https://github.com/blueeaglesam/webly](https://github.com/blueeaglesam/webly)
-
 ## License
 
 Licensed under the Elastic License 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at:
@@ -451,53 +473,3 @@ Licensed under the Elastic License 2.0 (the "License"); you may not use this fil
 [https://www.elastic.co/licensing/elastic-license](https://www.elastic.co/licensing/elastic-license)
 
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
-
-## Contributing
-
-Contributions are welcome! Here's how you can help:
-
-### Reporting Issues
-
-- Use the [GitHub issue tracker](https://github.com/blueeaglesam/webly/issues)
-- Provide detailed reproduction steps
-- Include webly version: `webly --version`
-- Include OS and environment details
-
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/blueeaglesam/webly.git
-cd webly
-
-# Build the project
-cargo build
-
-# Run tests
-cargo test
-
-# Run with example
-cargo run -- GET https://httpbin.org/get
-```
-
-### Pull Requests
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass: `cargo test`
-6. Update documentation if needed
-7. Submit a pull request
-
-### Enhancement Ideas
-
-- [ ] Support for client certificate authentication
-- [ ] Binary data handling improvements
-- [ ] Multi-form POST support
-- [ ] REPL mode with session/cookie support
-- [ ] JSON response beautification
-- [ ] Response time measurements
-- [ ] HTTP/2 support
-- [ ] Configuration file validation
-- [ ] Shell completion scripts
