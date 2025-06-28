@@ -3,8 +3,13 @@ name = "webly"
 version = "0.1.0"
 authors = ["Satoshi Iizuka"]
 description = "A lightweight, profile-based HTTP client"
-edition = "2024"
-license = "Apache License 2.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/blueeaglesam/webly"
+homepage = "https://github.com/blueeaglesam/webly"
+readme = "README.md"
+keywords = ["http", "client", "cli", "curl", "api"]
+categories = ["command-line-utilities", "web-programming::http-client"]
 
 [dependencies]
 base64 = "0.22.1"
