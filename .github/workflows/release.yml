@@ -108,7 +108,11 @@ jobs:
         cd target/${{ matrix.target }}/release
         tar -czf ../../../${{ matrix.asset_name }} webly
         cd ../../../
-        sha256sum ${{ matrix.asset_name }} > ${{ matrix.asset_name }}.sha256
+        if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+          shasum -a 256 ${{ matrix.asset_name }} > ${{ matrix.asset_name }}.sha256
+        else
+          sha256sum ${{ matrix.asset_name }} > ${{ matrix.asset_name }}.sha256
+        fi
 
     - name: Create archive (Windows)
       if: matrix.os == 'windows-latest'
@@ -116,7 +120,7 @@ jobs:
         cd target/${{ matrix.target }}/release
         7z a ../../../${{ matrix.asset_name }} webly.exe
         cd ../../../
-        certutil -hashfile ${{ matrix.asset_name }} SHA256 > ${{ matrix.asset_name }}.sha256
+        Get-FileHash -Algorithm SHA256 ${{ matrix.asset_name }} | Format-List Hash | Out-String -Width 100 | ForEach-Object { $_.Split(' ')[3] + "  " + "${{ matrix.asset_name }}" } | Out-File -FilePath ${{ matrix.asset_name }}.sha256 -Encoding ascii
 
     - name: Upload Release Assets
       uses: softprops/action-gh-release@v2
