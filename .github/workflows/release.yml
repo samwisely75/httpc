@@ -8,15 +8,114 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 permissions:
   contents: write
   packages: write
 
 jobs:
+  # CI jobs must pass before any release steps
+  ci:
+    name: CI Checks
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust: [stable]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ matrix.rust }}
+        components: rustfmt, clippy
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ matrix.rust }}-
+          ${{ runner.os }}-cargo-
+
+    - name: Check formatting
+      if: matrix.os == 'ubuntu-latest'
+      run: cargo fmt --all -- --check
+
+    - name: Run clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+
+    - name: Build
+      run: cargo build --verbose --all-features
+
+    - name: Run tests
+      run: cargo test --verbose --all-features
+
+    - name: Run doctests
+      run: cargo test --doc
+
+    - name: Test with minimal dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: cargo test --no-default-features
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install cargo-audit
+      run: cargo install cargo-audit
+
+    - name: Run security audit
+      run: cargo audit
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Build release binary
+      run: cargo build --release
+
+    - name: Test CLI functionality
+      run: |
+        # Test basic functionality
+        ./target/release/webly --help
+        ./target/release/webly GET https://httpbin.org/get
+        echo '{"test": "data"}' | ./target/release/webly POST https://httpbin.org/post
+
+    - name: Test configuration file
+      run: |
+        # Create test config
+        mkdir -p ~/.config
+        echo '[test]
+        host = https://httpbin.org
+        @content-type = application/json' > ~/.webly
+        
+        # Test with profile
+        ./target/release/webly -p test GET /get
+
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    needs: [ci, security-audit, integration-test]
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       release_id: ${{ steps.create_release.outputs.id }}
@@ -39,6 +138,7 @@ jobs:
   build:
     name: Build and Upload
     runs-on: ${{ matrix.os }}
+    needs: [ci, security-audit, integration-test]
     strategy:
       matrix:
         include:
@@ -135,6 +235,7 @@ jobs:
   build-packages:
     name: Build Linux Packages
     runs-on: ubuntu-latest
+    needs: [ci, security-audit, integration-test]
     strategy:
       matrix:
         include:
@@ -201,6 +302,7 @@ jobs:
   build-msi:
     name: Build Windows MSI
     runs-on: windows-latest
+    needs: [ci, security-audit, integration-test]
     strategy:
       matrix:
         include:
@@ -258,7 +360,7 @@ jobs:
 
   update-homebrew:
     name: Update Homebrew Formula
-    needs: build
+    needs: [ci, security-audit, integration-test, build]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -271,6 +373,7 @@ jobs:
   docker:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
+    needs: [ci, security-audit, integration-test]
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
