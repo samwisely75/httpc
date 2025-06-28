@@ -1,152 +1,475 @@
-# webcat
+# webly
 
-[![GitHub build](https://github.com/blueeaglesam/webcat/actions/workflows/rust.yml/badge.svg)](https://github.com/blueeaglesam/webcat/actions/workflows/rust.yml)
+[![GitHub build](https://github.com/blueeaglesam/webly/actions/workflows/rust.yml/badge.svg)](https://github.com/blueeaglesam/webly/actions/workflows/rust.yml)
+[![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Downloads](https://img.shields.io/crates/d/webly.svg)](https://crates.io/crates/webly)
 
-A light-weight profile-based HTTP client allows you to talk to web servers with a minimal effort.
+A lightweight, profile-based HTTP client that allows you to talk to web servers with minimal effort. Think of it as `curl` with persistent profiles and simplified syntax.
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Examples](#examples)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [Motivation](#motivation)
 
 ## Usage
 
-### Basics
+### Basic HTTP Requests
 
-The simplest usage is to run the following command in your terminal: 
+The simplest usage is to make a request to any URL:
 
-```sh
-webcat GET /
-```
+```bash
+# GET request
+webly GET https://httpbin.org/get
 
-You can `PUT` or `POST` with simple command like this:
-
-```sh
-webcat PUT _cluster/settings '{
-    "persistent": {
-        "cluster.routing.allocation.enabled": "primaries"
-    }
+# POST request with JSON data
+webly POST https://httpbin.org/post '{
+    "name": "John Doe",
+    "email": "john@example.com"
 }'
+
+# PUT request
+webly PUT https://httpbin.org/put '{"status": "updated"}'
+
+# DELETE request
+webly DELETE https://httpbin.org/delete
 ```
 
-### Use Standard Input
+### Using Standard Input
 
-You can also pass a request body via standard input: 
+You can pass request body via standard input:
 
-```sh
+```bash
+# From file
+cat data.json | webly POST https://api.example.com/users
+
+# From command output
+echo '{"query": {"match_all": {}}}' | webly POST https://elasticsearch.example.com/my-index/_search
+
+# Complex pipeline example
 echo '{
     "query": {
         "range": {
-        "@timestamp": {
-            "gte": "now-1d/d",
-            "lt": "now/d"
+            "@timestamp": {
+                "gte": "now-1d/d",
+                "lt": "now/d"
+            }
         }
     }
-}' \
-| webcat GET my-index/_search \
-| jq -r '.hits.hits[] | [ ._id, ._source.name ] | @tsv' \
-| sed -e "s/\t/ /g"
+}' | webly GET my-index/_search | jq '.hits.hits[]._source.name'
 ```
 
-### Switch Connection via Profile
+### Profile-Based Requests
 
-The commands above are using `default` profile in your `~/.webcat`, a configuration file that contains the base url (e.g. `https://my-remote-server:9200`), user, password, and other parameters. You can switch the context by specifying another profile name in `--profile` (or `-p`). 
+Use profiles to avoid repeating connection details:
 
-```sh
-webcat -p my-dev-cluster GET /_cluster/settings
-webcat -p cust-qa-cluster GET /_cluster/settings
+```bash
+# Use default profile
+webly GET /api/users
+
+# Use specific profile
+webly -p staging GET /api/users
+webly -p production GET /health
 ```
 
-### Override/Aurgment Configurations
+### Authentication & Headers
 
- You can run the command without configuring `~/.webcat` by providing a URL starts with `http://` or `https://` directly into the `URL` like `curl`. You can also use other command line parameters such as `--user` (or `-u`) and `--password` (or `-w`) to augment/override the configuration.
+```bash
+# Basic authentication
+webly GET https://api.example.com/protected \
+    --user admin \
+    --password secret
 
-```sh
-webcat GET https://my-local-server:9200/_cluster/health \
-    --user elastic \
-    --password changeme \
-    --ca-cert /path/to/ca.pem
+# Custom headers
+webly POST https://api.example.com/data \
+    -H "Authorization: Bearer your-token" \
+    -H "X-Custom-Header: value" \
+    '{"data": "value"}'
+
+# SSL options
+webly GET https://self-signed.example.com/api \
+    --ca-cert /path/to/ca.pem \
+    --insecure
 ```
 
-For all available command line options, run `webcat -h` or `webcat --help`.
+### Advanced Usage
+
+```bash
+# Through proxy
+webly GET https://api.example.com/data \
+    --proxy http://proxy.company.com:8080
+
+# Verbose mode for debugging
+webly -v GET https://api.example.com/debug
+
+# Override profile settings
+webly -p production GET /api/data \
+    --user different-user \
+    --password different-pass
+```
+
+For all available options, run:
+
+```bash
+webly --help
+```
 
 ## Features
 
-- Curl-like command line options allows to talk to web servers
-- Enable minimizing parameters 
-- Support multiple connection profiles and select by `-p` parameter
-- Support all HTTP methods (GET, POST, PUT, DELETE, etc.)
-- Support auto redirection
-- Support standard input for request body
-- Support multiple compression (gzip, deflate, zstd)
-- Support multiple headers
-- Support custom CA certtificate for SSL/TLS
-- Support request through a HTTP proxy that doesn't require authentication
-- Enable skipping SSL/TLS server certificate validation
-- Provide verbose mode writes the details of request and response to the error output
+- **Profile-based configuration** - Store connection details in `~/.webly` for reuse
+- **Multiple HTTP methods** - Support GET, POST, PUT, DELETE, HEAD, etc.
+- **Authentication support** - Basic auth, custom headers
+- **SSL/TLS support** - Custom CA certificates, insecure mode option
+- **Proxy support** - HTTP proxy configuration  
+- **Standard input support** - Read request body from stdin
+- **Multiple compression** - gzip, deflate, zstd
+- **Flexible URL handling** - Absolute or relative URLs with profile base
+- **Verbose mode** - Detailed request/response information
+- **Auto redirection** - Automatic following of HTTP redirects
 
 ## Installation
 
-1. Download the binary in releases according to your platform.
-1. Expand .tar.gz and copy `webcat` to where `$PATH` is thru (e.g. `/usr/local/bin`)
-1. Run `webcat --help` to test it.
+### From Pre-built Binaries
+
+1. Download the binary from [releases](https://github.com/blueeaglesam/webly/releases) for your platform
+2. Extract the `.tar.gz` file: `tar -xzf webly-*.tar.gz`
+3. Copy `webly` to a directory in your `$PATH` (e.g., `/usr/local/bin`)
+4. Test the installation: `webly --help`
+
+### From Source (Rust Required)
+
+```bash
+# Install from crates.io
+cargo install webly
+
+# Or build from source
+git clone https://github.com/blueeaglesam/webly.git
+cd webly
+cargo build --release
+sudo cp target/release/webly /usr/local/bin/
+```
+
+### System Requirements
+
+- macOS, Linux, or Windows
+- No additional dependencies required
+
+## Quick Start
+
+1. **Simple GET request to any URL:**
+   ```bash
+   webly GET https://httpbin.org/get
+   ```
+
+2. **Create a profile for repeated use:**
+   ```bash
+   # Create ~/.webly file
+   echo "[api]
+   host = https://api.example.com
+   user = your-username
+   password = your-password
+   @content-type = application/json" > ~/.webly
+   ```
+
+3. **Use the profile:**
+   ```bash
+   webly -p api GET /users/me
+   ```
 
 ## Configuration
 
-The configuration can be done through `~/.webcat` file, which is in a good-old INI format that contains more than one profiles, consisting of more than one key-value pairs. You can switch the profile by specifying `--profile` (or `-p`) command line option. If you don't specify the profile, `default` will be used.
+### Configuration File Location
+
+webly looks for configuration in `~/.webly` (on Unix/Linux/macOS) or `%USERPROFILE%\.webly` (on Windows).
+
+### Configuration Format
+
+The configuration file uses INI format with multiple profiles. Each profile contains connection details and default headers.
 
 ```ini
 [default]
-host = https://elastic-prod.es.us-central1.gcp.cloud.es.io
-user = elastic
-password = changeme
+host = https://api.example.com
+user = your-username
+password = your-password
 insecure = false
 ca_cert = /path/to/ca.pem
 @content-type = application/json
-@user-agent = webcat/0.1
-@accept = */*
+@user-agent = webly/0.1
+@accept = application/json
 @accept-encoding = gzip, deflate
-@accept-langugage = en-US,en;q=0.9
+
+[staging]
+host = https://staging-api.example.com  
+user = staging-user
+password = staging-pass
+@content-type = application/json
 
 [local]
-host = http://localhost:9200
-user = elastic
-password = changeme
+host = http://localhost:8080
+user = admin
+password = admin
 ```
 
-The entities start with `@` will be treated as HTTP headers. You can specify multiple headers by adding more keys with the same prefix. 
+### Configuration Options
 
-## Enhancement Plan
+#### Connection Settings
+- `host` - Base URL for requests (required for relative URLs)
+- `user` - Username for basic authentication
+- `password` - Password for basic authentication
+- `ca_cert` - Path to CA certificate file for SSL/TLS
+- `insecure` - Skip SSL/TLS certificate verification (true/false)
 
-- [x] Remove `--stdin` parameter
-- [x] Support multiple headers in command line options
-- [ ] Introduce blank profile
-- [ ] Support proxy
-- [ ] Support client certificate authentication
-- [ ] Support binary data send
-- [ ] Support multi-form post
-- [ ] REPL capability with cookie support
-- [ ] Beautify JSON output
+#### HTTP Headers
+Any key starting with `@` becomes an HTTP header:
+- `@content-type` → `Content-Type` header
+- `@authorization` → `Authorization` header
+- `@user-agent` → `User-Agent` header
+- `@accept` → `Accept` header
+
+### Profile Selection
+
+```bash
+# Use default profile
+webly GET /api/endpoint
+
+# Use specific profile
+webly -p staging GET /api/endpoint
+webly --profile production GET /api/endpoint
+```
+
+### Command Line Override
+
+Command line options override profile settings:
+
+```bash
+# Override user from profile
+webly -p staging --user different-user GET /api/data
+
+# Override host entirely
+webly GET https://completely-different-host.com/api
+``` 
+
+## Examples
+
+### API Testing
+
+```bash
+# Test REST API endpoints
+webly GET https://jsonplaceholder.typicode.com/posts/1
+webly POST https://jsonplaceholder.typicode.com/posts '{
+    "title": "My Post",
+    "body": "Post content",
+    "userId": 1
+}'
+```
+
+### Working with Different Content Types
+
+```bash
+# JSON API
+webly POST https://api.example.com/users \
+    -H "Content-Type: application/json" \
+    '{"name": "John", "email": "john@example.com"}'
+
+# Form data
+webly POST https://api.example.com/form \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    'name=John&email=john@example.com'
+
+# File upload simulation
+cat document.json | webly PUT https://api.example.com/documents/123
+```
+
+### Elasticsearch/OpenSearch Examples
+
+```bash
+# Check cluster health
+webly -p elastic GET /_cluster/health
+
+# Search documents
+echo '{
+    "query": {
+        "match": {"title": "search term"}
+    }
+}' | webly -p elastic GET /my-index/_search
+
+# Index a document
+webly -p elastic PUT /my-index/_doc/1 '{
+    "title": "My Document",
+    "content": "Document content here"
+}'
+```
+
+### Development Workflow
+
+```bash
+# Set up profiles for different environments
+cat > ~/.webly << EOF
+[dev]
+host = http://localhost:3000
+@content-type = application/json
+
+[staging]
+host = https://staging-api.company.com
+user = api-user
+password = staging-password
+@authorization = Bearer staging-token
+
+[prod]
+host = https://api.company.com
+user = api-user
+password = production-password
+@authorization = Bearer production-token
+EOF
+
+# Test the same endpoint across environments
+webly -p dev GET /api/health
+webly -p staging GET /api/health
+webly -p prod GET /api/health
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Q: `webly: command not found`**
+A: Make sure webly is in your PATH. Try `which webly` or reinstall following the installation instructions.
+
+**Q: SSL certificate errors**
+A: Use `--insecure` to skip certificate validation, or provide a CA certificate with `--ca-cert /path/to/ca.pem`.
+
+**Q: Profile not found**
+A: Check that `~/.webly` exists and contains the profile. Use `webly -p nonexistent GET /` to see the error.
+
+**Q: Authentication failures**
+A: Verify credentials in your profile or override with `--user` and `--password` flags.
+
+**Q: Request body from stdin not working**
+A: Make sure you're piping data correctly: `echo '{"key": "value"}' | webly POST /api/endpoint`
+
+### Debug Mode
+
+Use verbose mode to see detailed request/response information:
+
+```bash
+webly -v GET https://httpbin.org/get
+```
+
+This shows:
+- Full request URL and headers
+- Response status and headers
+- Timing information
+- SSL/TLS details
+
+### Configuration Validation
+
+Check your configuration file:
+
+```bash
+# View current configuration
+cat ~/.webly
+
+# Test with a simple request
+webly -p your-profile GET /simple/endpoint
+```
 
 ## Motivation
 
-I am a consultant and I talk to Elasticsearch every day. Kibana Dev Tools is the primary option, however on the consulting field it's not always available. 
+As a consultant working with APIs daily, especially Elasticsearch, I found that existing tools had limitations:
 
-`curl` works great in that situation, however providing same parameters such as `-u elastic:password` and `-H "content-type: application/json"` every time I query the node is painful. The scheme defintion, host name, and port number in the URL are redundant too. 
+**Kibana Dev Tools** is excellent but not always available in client environments.
 
-In Kibana Dev Tools you can say:
+**curl** works everywhere but becomes cumbersome with repetitive parameters:
 
-`GET /_cat/indices?v` 
-
-which in `curl` becomes like:
-
-```sh
+```bash
 curl -XGET \
      -u "elastic:password" \
      -H "content-type: application/json" \
      https://prod-cluster.es.us-central1.gcp.cloud.es.io/_cat/indices?v
 ```
 
-I wanted to bring the simplicity of Kibana Dev Tools to `curl` and `httpie` users.
+**What I wanted** was the simplicity of Kibana Dev Tools:
 
-I know Python does the job and I've been there. The problem is that the source code will soon become lengthy and difficult to maintain in a single file, so you will need to carry around multiple files to make it work. You also need `requests` library to be installed, which is hassle for the vintage OSs do not have `pip` at the start. This isn't cool.
+```bash
+GET /_cat/indices?v
+```
 
-## Contribution
+**webly bridges this gap** by combining curl's universality with profile-based simplicity:
 
-Contributions and bug reports are welcome. Please feel free to open an issue or send me a pull request.
+```bash
+webly GET /_cat/indices?v  # Uses default profile
+```
+
+### Why Rust?
+
+- **Single binary** - No runtime dependencies, easy to deploy
+- **Cross-platform** - Works on Linux, macOS, Windows  
+- **Performance** - Fast startup and execution
+- **Reliability** - Memory safety and robust error handling
+- **Maintainability** - Strong type system prevents many bugs
+
+Python scripts become unwieldy for this use case, requiring multiple files and dependency management. Rust delivers a professional tool that "just works" everywhere.
+
+---
+
+**License:** Apache 2.0  
+**Author:** Satoshi Iizuka  
+**Repository:** [https://github.com/blueeaglesam/webly](https://github.com/blueeaglesam/webly)
+
+## Contributing
+
+Contributions are welcome! Here's how you can help:
+
+### Reporting Issues
+
+- Use the [GitHub issue tracker](https://github.com/blueeaglesam/webly/issues)
+- Provide detailed reproduction steps
+- Include webly version: `webly --version`
+- Include OS and environment details
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/blueeaglesam/webly.git
+cd webly
+
+# Build the project
+cargo build
+
+# Run tests
+cargo test
+
+# Run with example
+cargo run -- GET https://httpbin.org/get
+```
+
+### Pull Requests
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass: `cargo test`
+6. Update documentation if needed
+7. Submit a pull request
+
+### Enhancement Ideas
+
+- [ ] Support for client certificate authentication
+- [ ] Binary data handling improvements
+- [ ] Multi-form POST support
+- [ ] REPL mode with session/cookie support
+- [ ] JSON response beautification
+- [ ] Response time measurements
+- [ ] HTTP/2 support
+- [ ] Configuration file validation
+- [ ] Shell completion scripts
 

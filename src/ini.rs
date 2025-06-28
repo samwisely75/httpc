@@ -6,7 +6,7 @@ use crate::utils::Result;
 use ini::{Ini, Properties};
 use std::collections::HashMap;
 
-pub const DEFAULT_INI_FILE_PATH: &str = "~/.webcat/config";
+pub const DEFAULT_INI_FILE_PATH: &str = "~/.webly";
 pub const PROFILE_BLANK: &str = "none";
 
 const INI_HOST: &str = "host";

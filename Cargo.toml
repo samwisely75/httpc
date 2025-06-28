@@ -1,8 +1,8 @@
 [package]
-name = "webcat"
+name = "webly"
 version = "0.1.0"
 authors = ["Satoshi Iizuka"]
-description = "Run an HTTP request and print the result"
+description = "A lightweight, profile-based HTTP client"
 edition = "2024"
 license = "Apache License 2.0"
 
