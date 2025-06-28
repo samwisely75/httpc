@@ -1,6 +1,6 @@
 [package]
 name = "webly"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Satoshi Iizuka"]
 description = "A lightweight, profile-based HTTP client"
 edition = "2021"
