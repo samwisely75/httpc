@@ -1,7 +1,7 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
-    fmt::{Display, Formatter},
+    fmt::{Display, Error, Formatter},
     str::FromStr,
 };
 
@@ -13,6 +13,7 @@ pub struct Endpoint {
     port: Option<u16>,
     scheme: Option<String>,
 }
+
 impl FromStr for Endpoint {
     type Err = String;
 
@@ -45,15 +46,16 @@ impl FromStr for Endpoint {
         Ok(Endpoint { host, port, scheme })
     }
 }
+
 impl Endpoint {
     pub fn new(host: String, port: Option<u16>, scheme: Option<String>) -> Self {
         Endpoint { host, port, scheme }
     }
 
-    pub fn parse(s: &str) -> Self {
+    pub fn parse(s: &str) -> Result<Self, std::fmt::Error> {
         match Self::from_str(s) {
-            Ok(endpoint) => endpoint,
-            Err(_) => panic!("Failed to parse endpoint from string: {}", s),
+            Ok(endpoint) => Ok(endpoint),
+            Err(_) => Err(Error),
         }
     }
 
@@ -147,26 +149,29 @@ impl Url {
         // This regex stores the first part of the URL in the scheme group when the original string is
         // in relative path format without a leading slash. (e.g. `path/to/resource` instead of `/path/to/resource`)
         let re = Regex::new(REGEX_PATTERNS_URL).unwrap();
-        let caps = re.captures(s).unwrap();
-        let rel_url_wo_lead_slash = caps.name("scheme").is_some()
-            && caps.name("host").is_none()
-            && caps.name("port").is_none()
-            && caps.name("path").is_some();
+        let url_elems = re.captures(s).unwrap();
+        let rel_url_wo_lead_slash = url_elems.name("scheme").is_some()
+            && url_elems.name("host").is_none()
+            && url_elems.name("port").is_none()
+            && url_elems.name("path").is_some();
 
         let scheme = if rel_url_wo_lead_slash {
             None
         } else {
-            caps.name("scheme").map(|m| m.as_str().to_string())
+            url_elems.name("scheme").map(|m| m.as_str().to_string())
         };
 
         let path = if rel_url_wo_lead_slash {
             Some(format!(
                 "/{}{}",
-                caps.name("scheme").unwrap().as_str(),
-                caps.name("path").map(|m| m.as_str()).unwrap_or_default()
+                url_elems.name("scheme").unwrap().as_str(),
+                url_elems
+                    .name("path")
+                    .map(|m| m.as_str())
+                    .unwrap_or_default()
             ))
         } else {
-            let p = caps.name("path").map(|m| m.as_str().to_string());
+            let p = url_elems.name("path").map(|m| m.as_str().to_string());
             if p.is_some() && p.as_ref().unwrap().is_empty() {
                 None
             } else {
@@ -174,10 +179,11 @@ impl Url {
             }
         };
 
-        let endpoint = if caps.name("host").is_some() {
+        let endpoint = if url_elems.name("host").is_some() {
             Some(Endpoint::new(
-                caps.name("host").unwrap().as_str().to_string(),
-                caps.name("port")
+                url_elems.name("host").unwrap().as_str().to_string(),
+                url_elems
+                    .name("port")
                     .map(|m| m.as_str().parse::<u16>().unwrap()),
                 scheme.clone(),
             ))
@@ -185,14 +191,14 @@ impl Url {
             None
         };
 
-        let path = if path.is_some() {
-            Some(UrlPath::new(
-                path.unwrap(),
-                caps.name("query").map(|m| m.as_str().to_string()),
-            ))
-        } else {
-            None
-        };
+        let path = path
+            .map(|p| {
+                Some(UrlPath::new(
+                    p,
+                    url_elems.name("query").map(|m| m.as_str().to_string()),
+                ))
+            })
+            .unwrap_or(None);
 
         Url { endpoint, path }
     }
@@ -299,7 +305,7 @@ mod test {
 
         #[test]
         fn parse_should_parse_endpoint_with_scheme_host_and_port() -> crate::utils::Result<()> {
-            let endpoint = Endpoint::parse("http://example.com:8080");
+            let endpoint = Endpoint::parse("http://example.com:8080")?;
             assert_eq!(endpoint.scheme(), Some(&"http".to_string()));
             assert_eq!(endpoint.host(), "example.com");
             assert_eq!(endpoint.port(), Some(8080));
@@ -308,7 +314,7 @@ mod test {
 
         #[test]
         fn parse_should_parse_endpoint_without_port() -> crate::utils::Result<()> {
-            let endpoint = Endpoint::parse("http://example.com");
+            let endpoint = Endpoint::parse("http://example.com")?;
             assert_eq!(endpoint.scheme(), Some(&"http".to_string()));
             assert_eq!(endpoint.host(), "example.com");
             assert_eq!(endpoint.port(), None);
@@ -317,7 +323,7 @@ mod test {
 
         #[test]
         fn parse_should_parse_endpoint_with_host_only() -> crate::utils::Result<()> {
-            let endpoint = Endpoint::parse("example.com");
+            let endpoint = Endpoint::parse("example.com")?;
             assert_eq!(endpoint.scheme(), None);
             assert_eq!(endpoint.host(), "example.com");
             assert_eq!(endpoint.port(), None);

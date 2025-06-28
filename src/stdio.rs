@@ -13,6 +13,7 @@ pub struct StdinArgs {
     headers: HashMap<String, String>,
 }
 
+#[allow(dead_code)]
 impl StdinArgs {
     pub fn new(i: &mut Stdin) -> Result<Self> {
         if atty::is(atty::Stream::Stdin) {

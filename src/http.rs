@@ -3,8 +3,8 @@ use crate::utils::Result;
 use crate::{decoder::*, url::Endpoint};
 
 use reqwest::{
-    Certificate, Client, Method, Request, StatusCode,
     header::{HeaderMap, HeaderName, HeaderValue},
+    Certificate, Client, Method, Request, StatusCode,
 };
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -112,10 +112,10 @@ impl HttpClient {
         };
 
         Ok(HttpResponse {
-            status: status,
-            headers: headers,
+            status,
+            headers,
             body: body_string,
-            json
+            json,
         })
     }
 
@@ -173,7 +173,216 @@ impl HttpClient {
             cli_builder = cli_builder.proxy(reqwest::Proxy::all(proxy_url).unwrap());
         }
 
-        let client = cli_builder.build().unwrap();
-        client
+        cli_builder.build().unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::url::{Endpoint, UrlPath};
+    use std::collections::HashMap;
+
+    #[derive(Debug)]
+    struct MockProfile {
+        server: Option<Endpoint>,
+        user: Option<String>,
+        password: Option<String>,
+        insecure: Option<bool>,
+        ca_cert: Option<String>,
+        headers: HashMap<String, String>,
+        proxy: Option<Endpoint>,
+    }
+
+    impl MockProfile {
+        fn new() -> Self {
+            Self {
+                server: match Endpoint::parse("https://httpbin.org") {
+                    Ok(endpoint) => Some(endpoint),
+                    Err(_) => panic!("Failed to parse test endpoint"),
+                },
+                user: None,
+                password: None,
+                insecure: None,
+                ca_cert: None,
+                headers: HashMap::new(),
+                proxy: None,
+            }
+        }
+
+        fn with_auth(mut self, user: String, password: String) -> Self {
+            self.user = Some(user);
+            self.password = Some(password);
+            self
+        }
+
+        fn with_headers(mut self, headers: HashMap<String, String>) -> Self {
+            self.headers = headers;
+            self
+        }
+    }
+
+    impl HttpConnectionProfile for MockProfile {
+        fn server(&self) -> Option<&Endpoint> {
+            self.server.as_ref()
+        }
+
+        fn user(&self) -> Option<&String> {
+            self.user.as_ref()
+        }
+
+        fn password(&self) -> Option<&String> {
+            self.password.as_ref()
+        }
+
+        fn insecure(&self) -> Option<bool> {
+            self.insecure
+        }
+
+        fn ca_cert(&self) -> Option<&String> {
+            self.ca_cert.as_ref()
+        }
+
+        fn headers(&self) -> &HashMap<String, String> {
+            &self.headers
+        }
+
+        fn proxy(&self) -> Option<&Endpoint> {
+            self.proxy.as_ref()
+        }
+    }
+
+    #[derive(Debug)]
+    struct MockRequest {
+        method: Option<String>,
+        url_path: Option<UrlPath>,
+        body: Option<String>,
+        headers: HashMap<String, String>,
+    }
+
+    impl MockRequest {
+        fn new() -> Self {
+            Self {
+                method: Some("GET".to_string()),
+                url_path: Some(UrlPath::new("/get".to_string(), None)),
+                body: None,
+                headers: HashMap::new(),
+            }
+        }
+
+        fn with_method(mut self, method: &str) -> Self {
+            self.method = Some(method.to_string());
+            self
+        }
+
+        fn with_body(mut self, body: &str) -> Self {
+            self.body = Some(body.to_string());
+            self
+        }
+
+        fn with_headers(mut self, headers: HashMap<String, String>) -> Self {
+            self.headers = headers;
+            self
+        }
+    }
+
+    impl HttpRequestArgs for MockRequest {
+        fn method(&self) -> Option<&String> {
+            self.method.as_ref()
+        }
+
+        fn url_path(&self) -> Option<&UrlPath> {
+            self.url_path.as_ref()
+        }
+
+        fn body(&self) -> Option<&String> {
+            self.body.as_ref()
+        }
+
+        fn headers(&self) -> &HashMap<String, String> {
+            &self.headers
+        }
+    }
+
+    #[test]
+    fn test_http_client_creation() {
+        let profile = MockProfile::new();
+        let client = HttpClient::new(&profile);
+
+        assert_eq!(client.endpoint.scheme(), Some(&"https".to_string()));
+        assert_eq!(client.endpoint.host(), "httpbin.org");
+        assert!(client.user.is_none());
+        assert!(client.password.is_none());
+    }
+
+    #[test]
+    fn test_http_client_with_auth() {
+        let profile = MockProfile::new().with_auth("testuser".to_string(), "testpass".to_string());
+        let client = HttpClient::new(&profile);
+
+        assert_eq!(client.user, Some("testuser".to_string()));
+        assert_eq!(client.password, Some("testpass".to_string()));
+    }
+
+    #[test]
+    fn test_build_request_get() {
+        let profile = MockProfile::new();
+        let client = HttpClient::new(&profile);
+        let request_args = MockRequest::new();
+
+        let request = client.build_request(&request_args);
+
+        assert_eq!(request.method(), &Method::GET);
+        assert_eq!(request.url().path(), "/get");
+    }
+
+    #[test]
+    fn test_build_request_post_with_body() {
+        let profile = MockProfile::new();
+        let client = HttpClient::new(&profile);
+        let request_args = MockRequest::new()
+            .with_method("POST")
+            .with_body("{\"test\": \"data\"}");
+
+        let request = client.build_request(&request_args);
+
+        assert_eq!(request.method(), &Method::POST);
+        assert!(request.body().is_some());
+    }
+
+    #[test]
+    fn test_build_request_with_custom_headers() {
+        let mut headers = HashMap::new();
+        headers.insert("x-custom-header".to_string(), "custom-value".to_string());
+        headers.insert("authorization".to_string(), "Bearer token123".to_string());
+
+        let profile = MockProfile::new().with_headers(headers.clone());
+        let client = HttpClient::new(&profile);
+        let request_args = MockRequest::new().with_headers(headers);
+
+        let request = client.build_request(&request_args);
+
+        assert!(request.headers().get("x-custom-header").is_some());
+        assert!(request.headers().get("authorization").is_some());
+    }
+
+    #[test]
+    fn test_response_methods() {
+        let response = HttpResponse {
+            status: StatusCode::OK,
+            headers: HeaderMap::new(),
+            body: "test body".to_string(),
+            json: Some(serde_json::json!({"test": "value"})),
+        };
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.body(), "test body");
+        assert!(response.json().is_some());
+        assert_eq!(response.json().unwrap()["test"], "value");
+    }
+
+    #[test]
+    fn test_default_method() {
+        assert_eq!(DEFAULT_METHOD, "GET");
     }
 }

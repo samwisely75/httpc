@@ -1,0 +1,24 @@
+# Clippy configuration
+# Note: Some options require nightly Rust
+
+# Lint level adjustments
+cognitive-complexity-threshold = 30
+too-many-arguments-threshold = 8
+type-complexity-threshold = 60
+single-char-binding-names-threshold = 5
+trivial-copy-size-limit = 256
+
+# Allowed lint bypasses for this project
+allow-dbg-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+allow-unwrap-in-tests = true
+
+# Disallowed methods (to encourage better practices)
+disallowed-methods = [
+    "std::env::var", # Use std::env::var_os instead
+]
+
+# Documentation requirements
+missing-docs-in-crate-items = true

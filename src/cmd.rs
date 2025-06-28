@@ -1,7 +1,7 @@
 use std::{collections::HashMap, ffi::OsString};
 
-pub use clap::Parser;
 use clap::builder::{OsStringValueParser, TypedValueParser};
+pub use clap::Parser;
 
 use crate::http::{HttpConnectionProfile, HttpRequestArgs};
 use crate::url::{Endpoint, Url, UrlPath};
@@ -102,16 +102,19 @@ pub struct CommandLineArgs {
     method: String,
     url: Url,
     body: Option<String>,
+    #[allow(dead_code)] // Used by profile() method
     profile: String,
     user: Option<String>,
     password: Option<String>,
     ca_cert: Option<String>,
     insecure: Option<bool>,
     headers: HashMap<String, String>,
+    #[allow(dead_code)] // Used in future features
     verbose: bool,
     proxy: Option<Endpoint>,
 }
 
+#[allow(dead_code)]
 fn vec_to_hashmap(vec: Vec<String>) -> HashMap<String, String> {
     vec.into_iter()
         .map(|s| {
@@ -128,6 +131,7 @@ fn vec_to_hashmap(vec: Vec<String>) -> HashMap<String, String> {
 }
 
 impl CommandLineArgs {
+    #[allow(dead_code)]
     pub fn parse() -> Self {
         let args = ClapArgs::parse();
         Self {
@@ -145,7 +149,7 @@ impl CommandLineArgs {
         }
     }
 
-    #[allow(dead_code)] // for testing
+    #[allow(dead_code)]
     pub fn parse_from<I, T>(itr: I) -> Self
     where
         I: IntoIterator<Item = T>,
@@ -167,9 +171,10 @@ impl CommandLineArgs {
         }
     }
 
+    #[allow(dead_code)]
     pub fn merge_req(&mut self, other: &dyn HttpRequestArgs) -> &mut Self {
         if other.url_path().is_some() {
-            self.url.set_path(&other.url_path().unwrap());
+            self.url.set_path(other.url_path().unwrap());
         }
 
         if other.method().is_some() {
@@ -189,10 +194,12 @@ impl CommandLineArgs {
         self
     }
 
+    #[allow(dead_code)]
     pub fn profile(&self) -> &String {
         &self.profile
     }
 
+    #[allow(dead_code)]
     pub fn verbose(&self) -> bool {
         self.verbose
     }

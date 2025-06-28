@@ -6,7 +6,7 @@ use crate::utils::Result;
 use ini::{Ini, Properties};
 use std::collections::HashMap;
 
-pub const DEFAULT_INI_FILE_PATH: &str = "~/.webly";
+pub const DEFAULT_INI_FILE_PATH: &str = "~/.webly/config";
 pub const PROFILE_BLANK: &str = "none";
 
 const INI_HOST: &str = "host";
@@ -80,7 +80,7 @@ impl IniProfile {
         if other.ca_cert().is_some() {
             self.ca_cert = other.ca_cert().cloned();
         }
-        if other.headers().len() > 0 {
+        if !other.headers().is_empty() {
             for (k, v) in other.headers() {
                 self.headers.insert(k.clone(), v.clone());
             }
@@ -139,13 +139,13 @@ impl IniProfileStore {
 
         let profile = IniProfile {
             name: name.to_string(),
-            server: try_get::<Endpoint>(&section, INI_HOST),
-            user: try_get(&section, INI_USER),
-            password: try_get(&section, INI_PASSWORD),
-            insecure: try_get::<bool>(&section, INI_INSECURE),
-            ca_cert: try_get(&section, INI_CA_CERT),
+            server: try_get::<Endpoint>(section, INI_HOST),
+            user: try_get(section, INI_USER),
+            password: try_get(section, INI_PASSWORD),
+            insecure: try_get::<bool>(section, INI_INSECURE),
+            ca_cert: try_get(section, INI_CA_CERT),
             headers: headers.clone(),
-            proxy: try_get::<Endpoint>(&section, INI_PROXY),
+            proxy: try_get::<Endpoint>(section, INI_PROXY),
         };
 
         Ok(Some(profile))
@@ -200,33 +200,33 @@ pub fn ask_new_profile(name: &str, i: &std::io::Stdin) -> Result<Option<IniProfi
         "Profile \"{}\" doesn't exist. Do you want to create it? [y/N]: ",
         name
     );
-    if !ask_binary(&i, &init_msg)? {
+    if !ask_binary(i, &init_msg)? {
         return Ok(None);
     }
 
-    let host = ask_no_space_string(&i, "host name: ")?;
-    let port = ask::<String>(&i, "port: ", r"\d+")?;
-    let scheme = if ask_binary(&i, "use SSL/TLS? [y/N]: ")? {
+    let host = ask_no_space_string(i, "host name: ")?;
+    let port = ask::<String>(i, "port: ", r"\d+")?;
+    let scheme = if ask_binary(i, "use SSL/TLS? [y/N]: ")? {
         "https"
     } else {
         "http"
     };
-    let user = if ask_binary(&i, "Do you need a user/password for this URL? [y/N]: ")? {
-        Some(ask_no_space_string(&i, "user: ")?)
+    let user = if ask_binary(i, "Do you need a user/password for this URL? [y/N]: ")? {
+        Some(ask_no_space_string(i, "user: ")?)
     } else {
         None
     };
 
     let password = if user.is_some() {
-        Some(ask_no_space_string(&i, "password: ")?)
+        Some(ask_no_space_string(i, "password: ")?)
     } else {
         None
     };
 
     let ca_cert = if scheme == "https"
-        && ask_binary(&i, "Do you need to use a custom CA certificate? [y/N]: ")?
+        && ask_binary(i, "Do you need to use a custom CA certificate? [y/N]: ")?
     {
-        let path = ask_path(&i, "CA certificate file: ")?;
+        let path = ask_path(i, "CA certificate file: ")?;
         Some(path)
     } else {
         None
@@ -239,10 +239,10 @@ pub fn ask_new_profile(name: &str, i: &std::io::Stdin) -> Result<Option<IniProfi
             Some(port.parse::<u16>().unwrap()),
             Some(scheme.to_string()),
         )),
-        user: user,
-        password: password,
+        user,
+        password,
         insecure: Some(false),
-        ca_cert: ca_cert,
+        ca_cert,
         headers: HashMap::new(),
         proxy: None,
     }))
@@ -354,7 +354,7 @@ mod test {
             password: Some(TEST_PASSWORD.to_string()),
             insecure: Some(TEST_INSECURE),
             ca_cert: Some(TEST_CA_CERT.to_string()),
-            headers: headers,
+            headers,
             proxy: None,
         };
 
@@ -435,7 +435,7 @@ mod test {
 
         let mut original = IniProfile {
             name: DEFAULT_INI_SECTION.to_string(),
-            server: Some(Endpoint::parse(&"https://localhost:8081")),
+            server: Some(Endpoint::parse(&"https://localhost:8081")?),
             user: None,
             password: None,
             insecure: Some(TEST_INSECURE),
@@ -448,7 +448,7 @@ mod test {
         headers.insert("content-type".to_string(), "text/html".to_string());
 
         let merging = TestArgs::new(
-            &Endpoint::parse(&"http://example.com"),
+            &Endpoint::parse(&"http://example.com")?,
             "test_user",
             "test_password",
             "/etc/pki/ca/cert.crt",

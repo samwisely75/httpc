@@ -8,10 +8,10 @@ mod utils;
 
 use cmd::CommandLineArgs;
 use http::{HttpClient, HttpConnectionProfile, HttpRequestArgs, HttpResponse};
-use ini::{DEFAULT_INI_FILE_PATH, IniProfileStore, get_blank_profile};
+use ini::{get_blank_profile, IniProfileStore, DEFAULT_INI_FILE_PATH};
 use reqwest::StatusCode;
 use stdio::StdinArgs;
-use tracing_subscriber::{EnvFilter, fmt::time::ChronoLocal};
+use tracing_subscriber::{fmt::time::ChronoLocal, EnvFilter};
 use utils::Result;
 
 #[tracing::instrument]
@@ -22,9 +22,9 @@ async fn main() -> Result<()> {
     // Load command line arguments
     let mut cmd_args = CommandLineArgs::parse();
 
-    // Read user input from stdin and merge it into command line args
-    // This must happen before the profile loading which may use stdin
-    // to complete the missing profile.
+    // Read user input from stdin and merge it into command line args.
+    // This must happen before loading a profile which may use a
+    // command prompt to complete the missing profile.
     let mut stdin = std::io::stdin();
     let stdin_args = StdinArgs::new(&mut stdin)?;
     cmd_args.merge_req(&stdin_args);
@@ -36,12 +36,12 @@ async fn main() -> Result<()> {
     let profile_name = cmd_args.profile();
     let ini_store = IniProfileStore::new(DEFAULT_INI_FILE_PATH);
     let mut profile = ini_store
-        .get_profile(&profile_name)?
+        .get_profile(profile_name)?
         .unwrap_or(get_blank_profile());
     tracing::debug!("INI profile: {:?}", profile);
 
     // Merge the command line arguments (e.g. user, password, etc.)
-    // to complete the connection profile. Note the server in ptofile
+    // to complete the connection profile. Note the server in profile
     // will be overwritten if a scheme and server is specified in
     // the command line URL
     profile.merge_profile(&cmd_args);
@@ -72,7 +72,10 @@ fn print_result(res: &HttpResponse) {
     // Print the response body
     if res.status() == StatusCode::OK {
         if res.json().is_some() {
-            println!("{}", serde_json::to_string_pretty(res.json().as_ref().unwrap()).unwrap());
+            println!(
+                "{}",
+                serde_json::to_string_pretty(res.json().as_ref().unwrap()).unwrap()
+            );
         } else {
             println!("{}", res.body());
         }
@@ -81,7 +84,7 @@ fn print_result(res: &HttpResponse) {
     }
 }
 
-fn init_tracing_subscriber() -> () {
+fn init_tracing_subscriber() {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::from_env(format!(
@@ -154,13 +157,16 @@ fn print_profile(profile: &impl HttpConnectionProfile) {
     });
 
     if profile.proxy().is_some() {
-        eprintln!(">   proxy: {}", profile.proxy().unwrap().to_string());
+        eprintln!(">   proxy: {}", profile.proxy().unwrap());
     }
 }
 
 #[tracing::instrument]
 fn print_request(req: &impl HttpRequestArgs) {
-    let url = req.url_path().map(|u| u.to_string()).unwrap_or("<none>".to_string());
+    let url = req
+        .url_path()
+        .map(|u| u.to_string())
+        .unwrap_or("<none>".to_string());
     eprintln!("> request:");
     eprintln!(">   method: {}", req.method().unwrap());
     eprintln!(">   path: {}", url);

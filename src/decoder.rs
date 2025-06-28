@@ -5,7 +5,6 @@ use flate2::read::DeflateDecoder;
 use flate2::read::GzDecoder;
 use std::io::Read;
 use std::str;
-use zstd;
 
 pub const ENC_NONE: &str = ":plaintext:";
 pub const ENC_GZIP: &str = "gzip";
@@ -90,5 +89,42 @@ mod test {
         let result = decode_zstd(&data).unwrap();
         let s = str::from_utf8(&result).unwrap();
         assert_eq!(s, "test_123");
+    }
+
+    #[test]
+    fn test_decode_bytes_utf8() {
+        let data = "Hello, 世界!".as_bytes();
+        let result = decode_bytes(data, ENC_NONE).unwrap();
+        assert_eq!(result, "Hello, 世界!");
+    }
+
+    #[test]
+    fn test_decode_bytes_invalid_utf8_fallback() {
+        // Invalid UTF-8 sequence
+        let data = &[0xFF, 0xFE, 0x00, 0x48, 0x00, 0x65];
+        let result = decode_bytes(data, ENC_NONE);
+        assert!(result.is_ok()); // Should fall back to SHIFT_JIS or replacement
+    }
+
+    #[test]
+    fn test_encoding_constants() {
+        assert_eq!(ENC_NONE, ":plaintext:");
+        assert_eq!(ENC_GZIP, "gzip");
+        assert_eq!(ENC_DEFLATE, "deflate");
+        assert_eq!(ENC_ZSTD, "zstd");
+    }
+
+    #[test]
+    fn test_decode_empty_data() {
+        let data = &[];
+        let result = decode_bytes(data, ENC_NONE).unwrap();
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_decode_unknown_encoding() {
+        let data = "test data".as_bytes();
+        let result = decode_bytes(data, "unknown").unwrap();
+        assert_eq!(result, "test data");
     }
 }

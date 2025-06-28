@@ -1,6 +1,7 @@
 # webly
 
-[![GitHub build](https://github.com/blueeaglesam/webly/actions/workflows/rust.yml/badge.svg)](https://github.com/blueeaglesam/webly/actions/workflows/rust.yml)
+[![CI](https://github.com/blueeaglesam/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/blueeaglesam/webly/actions/workflows/ci.yml)
+[![Release](https://github.com/blueeaglesam/webly/actions/workflows/release.yml/badge.svg)](https://github.com/blueeaglesam/webly/actions/workflows/release.yml)
 [![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Downloads](https://img.shields.io/crates/d/webly.svg)](https://crates.io/crates/webly)
@@ -17,7 +18,7 @@ A lightweight, profile-based HTTP client that allows you to talk to web servers 
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
-- [Motivation](#motivation)
+- [License](#license)
 
 ## Usage
 
@@ -419,9 +420,15 @@ Python scripts become unwieldy for this use case, requiring multiple files and d
 
 ---
 
-**License:** Apache 2.0  
-**Author:** Satoshi Iizuka  
 **Repository:** [https://github.com/blueeaglesam/webly](https://github.com/blueeaglesam/webly)
+
+## License
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at:
+
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 ## Contributing
 
