@@ -51,3 +51,9 @@ bytes = "1.10.1"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 
+[package.metadata.wix]
+upgrade-guid = "12345678-1234-1234-1234-123456789012"
+path-guid = "87654321-4321-4321-4321-210987654321"
+license = false
+eula = false
+

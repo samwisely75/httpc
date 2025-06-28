@@ -39,7 +39,14 @@ Plus all the HTTP client features you expect:
 
 Download the appropriate binary from [releases](https://github.com/blueeaglesam/webly/releases) for your platform:
 
-**Linux/macOS:**
+**macOS (Homebrew):**
+
+```bash
+# Install via Homebrew (easiest method for macOS)
+brew install blueeaglesam/tap/webly
+```
+
+**Linux/macOS (Manual):**
 
 ```bash
 # Download and extract
@@ -54,8 +61,9 @@ sudo mv webly /usr/local/bin/
 **Windows:**
 
 ```powershell
-# Download the .zip file from releases and extract
-# Add webly.exe to your PATH or place in a directory that's in PATH
+# Download and install the MSI package from releases
+# This will automatically add webly to your PATH
+# Download webly-VERSION-x64.msi from https://github.com/blueeaglesam/webly/releases
 ```
 
 **From crates.io (requires Rust):**
