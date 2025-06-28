@@ -144,10 +144,10 @@ jobs:
     - name: Test configuration file
       run: |
         # Create test config
-        mkdir -p ~/.config
+        mkdir -p ~/.webly
         echo '[test]
         host = https://httpbin.org
-        @content-type = application/json' > ~/.webly
+        @content-type = application/json' > ~/.webly/profiles
         
         # Test with profile
         ./target/release/webly -p test GET /get
