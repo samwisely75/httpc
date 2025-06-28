@@ -92,7 +92,7 @@ struct ClapArgs {
         short = 'x',
         long,
         help = "HTTP proxy URL in <scheme>://<host>:<port> format",
-        value_parser = OsStringValueParser::new().map(|s| Endpoint::parse(s.to_str().unwrap()))
+        value_parser = OsStringValueParser::new().try_map(|s| Endpoint::parse(s.to_str().unwrap()))
     )]
     proxy: Option<Endpoint>,
 }
@@ -164,7 +164,7 @@ impl CommandLineArgs {
             user: args.user,
             password: args.password,
             ca_cert: args.ca_cert,
-            insecure: Some(args.insecure),
+            insecure: if args.insecure { Some(true) } else { None },
             headers: vec_to_hashmap(args.headers),
             verbose: args.verbose,
             proxy: args.proxy,
@@ -365,52 +365,258 @@ mod test {
         );
     }
 
-    // #[test]
-    // fn cmd_arg_merge_req_should_merge_method_host_body_properly() {
-    //     let params = vec![
-    //         "http",
-    //         TEST_METHOD,
-    //         TEST_URL,
-    //         TEST_BODY,
-    //         "-p",
-    //         TEST_PROFILE,
-    //         "-u",
-    //         TEST_USER,
-    //         "-w",
-    //         TEST_PASSWORD,
-    //         "-r",
-    //         TEST_CA_CERT,
-    //         "-k",
-    //         "-H",
-    //         TEST_HEADER_CONTENT_TYPE,
-    //     ];
+    #[test]
+    fn test_merge_req_functionality() {
+        let mut cmd_args = CommandLineArgs::parse_from(&[
+            "http",
+            "GET",
+            "https://example.com/original",
+            "original body",
+            "-H",
+            "Original-Header: original-value",
+        ]);
 
-    //     let cmd_args = CommandLineArgs::parse_from(params.iter());
-    //     let req: Box<dyn HttpRequestArgs> = Box::new(TestArgs::new(
-    //         "POST",
-    //         &Url::parse(TEST_URL_2),
-    //         "",
-    //         vec_to_hashmap(vec![
-    //             TEST_HEADER_USER_AGENT.to_string(),
-    //             TEST_HEADER_CONTENT_TYPE.to_string(),
-    //         ]),
-    //     ));
-    //     let merged_cmd = cmd_args.merge_req(req.as_ref());
-    //     let merged_req: &dyn HttpRequestArgs = &merged_cmd;
-    //     let merged_url: &Endpoint = merged_req.url_path().unwrap();
-    //     let merged_headers = merged_req.headers();
+        // Create a mock HttpRequestArgs to merge
+        let mut headers = HashMap::new();
+        headers.insert("new-header".to_string(), "new-value".to_string());
+        headers.insert("original-header".to_string(), "overridden-value".to_string());
 
-    //     assert_eq!(merged_req.method(), Some(&"POST".to_string()));
-    //     assert_eq!(merged_url.host(), Some(&"example.com".to_string()));
-    //     assert_eq!(merged_req.body(), Some(&"".to_string()));
-    //     assert_eq!(merged_url.port(), None);
-    //     assert_eq!(merged_url.path(), Some(&"/path/to/resource".to_string()));
-    //     assert_eq!(merged_url.query(), Some(&"query=foo".to_string()));
-    //     assert_eq!(merged_url.scheme(), Some(&"https".to_string()));
-    //     assert_eq!(
-    //         merged_url.to_string(),
-    //         "https://example.com/path/to/resource?query=foo"
-    //     );
-    //     assert_eq!(merged_headers.len(), 2);
-    // }
+        let stdin_args = MockStdinArgs {
+            method: Some("POST".to_string()),
+            url_path: Some(crate::url::UrlPath::new("/new/path".to_string(), Some("query=test".to_string()))),
+            body: Some("new body".to_string()),
+            headers,
+        };
+
+        cmd_args.merge_req(&stdin_args);
+
+        // Check that values were merged correctly
+        assert_eq!(cmd_args.method().unwrap(), "POST");
+        assert_eq!(cmd_args.body().unwrap(), "new body");
+        
+        let request_headers: &dyn HttpRequestArgs = &cmd_args;
+        assert_eq!(request_headers.headers().get("new-header").unwrap(), "new-value");
+        assert_eq!(request_headers.headers().get("original-header").unwrap(), "overridden-value");
+        
+        assert_eq!(cmd_args.url.path(), Some(&"/new/path".to_string()));
+        assert_eq!(cmd_args.url.query(), Some(&"query=test".to_string()));
+    }
+
+    #[test]
+    fn test_merge_req_partial_override() {
+        let mut cmd_args = CommandLineArgs::parse_from(&[
+            "http",
+            "GET",
+            "https://example.com/path",
+            "original body",
+        ]);
+
+        // Create a mock HttpRequestArgs with only some fields
+        let stdin_args = MockStdinArgs {
+            method: None, // Don't override method
+            url_path: None, // Don't override URL path
+            body: Some("new body".to_string()), // Override body
+            headers: HashMap::new(), // No headers
+        };
+
+        cmd_args.merge_req(&stdin_args);
+
+        // Check that only specified values were overridden
+        assert_eq!(cmd_args.method().unwrap(), "GET"); // Original method preserved
+        assert_eq!(cmd_args.body().unwrap(), "new body"); // Body overridden
+        assert_eq!(cmd_args.url.path(), Some(&"/path".to_string())); // Original path preserved
+    }
+
+    #[test]
+    fn test_vec_to_hashmap_valid_headers() {
+        let headers = vec![
+            "Content-Type: application/json".to_string(),
+            "Authorization: Bearer token123".to_string(),
+            "Custom-Header:   custom-value   ".to_string(), // Test trimming
+        ];
+
+        let result = vec_to_hashmap(headers);
+
+        assert_eq!(result.len(), 3);
+        assert_eq!(result.get("content-type").unwrap(), "application/json");
+        assert_eq!(result.get("authorization").unwrap(), "Bearer token123");
+        assert_eq!(result.get("custom-header").unwrap(), "custom-value");
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid header format")]
+    fn test_vec_to_hashmap_invalid_header_no_colon() {
+        let headers = vec!["InvalidHeader".to_string()];
+        vec_to_hashmap(headers);
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid header format")]
+    fn test_vec_to_hashmap_invalid_header_empty() {
+        let headers = vec!["".to_string()];
+        vec_to_hashmap(headers);
+    }
+
+    #[test]
+    fn test_vec_to_hashmap_header_with_multiple_colons() {
+        let headers = vec!["Content-Type: application/json; charset=utf-8".to_string()];
+        let result = vec_to_hashmap(headers);
+        
+        assert_eq!(result.len(), 1);
+        assert_eq!(result.get("content-type").unwrap(), "application/json; charset=utf-8");
+    }
+
+    #[test]
+    fn test_profile_and_verbose_getters() {
+        let args = CommandLineArgs::parse_from(&[
+            "http",
+            "GET",
+            "https://example.com",
+            "-p",
+            "custom-profile",
+            "-v",
+        ]);
+
+        assert_eq!(args.profile(), "custom-profile");
+        assert!(args.verbose());
+    }
+
+    #[test]
+    fn test_default_profile_and_verbose() {
+        let args = CommandLineArgs::parse_from(&[
+            "http",
+            "GET", 
+            "https://example.com",
+        ]);
+
+        assert_eq!(args.profile(), "default");
+        assert!(!args.verbose());
+    }
+
+    #[test]
+    fn test_http_connection_profile_implementation() {
+        let args = CommandLineArgs::parse_from(&[
+            "http",
+            "GET",
+            "https://user:pass@example.com:8080/path",
+            "-u",
+            "testuser",
+            "-w",
+            "testpass",
+            "-k",
+            "-r",
+            "/path/to/cert.pem",
+            "-H",
+            "X-Custom: value",
+            "-x",
+            "http://proxy.example.com:3128",
+        ]);
+
+        let profile: &dyn HttpConnectionProfile = &args;
+
+        // Test server endpoint
+        assert!(profile.server().is_some());
+        let server = profile.server().unwrap();
+        assert_eq!(server.host(), "example.com");
+        assert_eq!(server.port(), Some(8080));
+        assert_eq!(server.scheme(), Some(&"https".to_string()));
+
+        // Test authentication
+        assert_eq!(profile.user().unwrap(), "testuser");
+        assert_eq!(profile.password().unwrap(), "testpass");
+
+        // Test SSL settings
+        assert_eq!(profile.insecure(), Some(true));
+        assert_eq!(profile.ca_cert().unwrap(), "/path/to/cert.pem");
+
+        // Test headers
+        assert_eq!(profile.headers().get("x-custom").unwrap(), "value");
+
+        // Test proxy
+        assert!(profile.proxy().is_some());
+        let proxy = profile.proxy().unwrap();
+        assert_eq!(proxy.host(), "proxy.example.com");
+        assert_eq!(proxy.port(), Some(3128));
+    }
+
+    #[test]
+    fn test_http_request_args_implementation() {
+        let args = CommandLineArgs::parse_from(&[
+            "http",
+            "POST",
+            "https://example.com/api/test?param=value",
+            "request body content",
+            "-H",
+            "Content-Type: application/json",
+        ]);
+
+        let request: &dyn HttpRequestArgs = &args;
+
+        assert_eq!(request.method().unwrap(), "POST");
+        assert_eq!(request.body().unwrap(), "request body content");
+        
+        let url_path = request.url_path().unwrap();
+        assert_eq!(url_path.path(), "/api/test");
+        assert_eq!(url_path.query(), Some(&"param=value".to_string()));
+
+        assert_eq!(request.headers().get("content-type").unwrap(), "application/json");
+    }
+
+    #[test]
+    fn test_method_case_normalization() {
+        let args = CommandLineArgs::parse_from(&[
+            "http",
+            "post", // lowercase
+            "https://example.com",
+        ]);
+
+        assert_eq!(args.method().unwrap(), "POST"); // Should be uppercase
+    }
+
+    #[test]
+    fn test_insecure_flag_handling() {
+        // Test with insecure flag
+        let args_insecure = CommandLineArgs::parse_from(&[
+            "http",
+            "GET",
+            "https://example.com",
+            "-k",
+        ]);
+        assert_eq!(args_insecure.insecure(), Some(true));
+
+        // Test without insecure flag
+        let args_secure = CommandLineArgs::parse_from(&[
+            "http",
+            "GET",
+            "https://example.com",
+        ]);
+        assert_eq!(args_secure.insecure(), None);
+    }
+
+    // Helper struct for testing merge_req
+    #[derive(Debug)]
+    struct MockStdinArgs {
+        method: Option<String>,
+        url_path: Option<crate::url::UrlPath>,
+        body: Option<String>,
+        headers: HashMap<String, String>,
+    }
+
+    impl HttpRequestArgs for MockStdinArgs {
+        fn method(&self) -> Option<&String> {
+            self.method.as_ref()
+        }
+
+        fn url_path(&self) -> Option<&crate::url::UrlPath> {
+            self.url_path.as_ref()
+        }
+
+        fn body(&self) -> Option<&String> {
+            self.body.as_ref()
+        }
+
+        fn headers(&self) -> &HashMap<String, String> {
+            &self.headers
+        }
+    }
 }

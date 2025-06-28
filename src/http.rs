@@ -135,6 +135,13 @@ impl HttpClient {
             req_builder = req_builder.basic_auth(user, self.password.clone());
         }
 
+        // Add headers from request arguments
+        for (key, value) in args.headers() {
+            let header_name = HeaderName::from_bytes(key.as_bytes()).unwrap();
+            let header_value = HeaderValue::from_str(value.as_str()).unwrap();
+            req_builder = req_builder.header(header_name, header_value);
+        }
+
         req_builder.build().unwrap()
     }
 
@@ -218,6 +225,24 @@ mod tests {
 
         fn with_headers(mut self, headers: HashMap<String, String>) -> Self {
             self.headers = headers;
+            self
+        }
+
+        #[allow(dead_code)]
+        fn with_insecure(mut self, insecure: bool) -> Self {
+            self.insecure = Some(insecure);
+            self
+        }
+
+        #[allow(dead_code)]
+        fn with_proxy(mut self, proxy: Endpoint) -> Self {
+            self.proxy = Some(proxy);
+            self
+        }
+
+        #[allow(dead_code)]
+        fn with_ca_cert(mut self, ca_cert: String) -> Self {
+            self.ca_cert = Some(ca_cert);
             self
         }
     }
@@ -384,5 +409,188 @@ mod tests {
     #[test]
     fn test_default_method() {
         assert_eq!(DEFAULT_METHOD, "GET");
+    }
+
+    #[test]
+    fn test_http_response_creation() {
+        let mut headers = HeaderMap::new();
+        headers.insert("content-type", "application/json".parse().unwrap());
+
+        let response = HttpResponse {
+            status: StatusCode::OK,
+            headers: headers.clone(),
+            body: "test response".to_string(),
+            json: Some(serde_json::json!({"key": "value"})),
+        };
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.body(), "test response");
+        assert_eq!(response.headers(), &headers);
+        assert!(response.json().is_some());
+        assert_eq!(response.json().unwrap()["key"], "value");
+    }
+
+    #[test]
+    fn test_http_response_without_json() {
+        let response = HttpResponse {
+            status: StatusCode::NOT_FOUND,
+            headers: HeaderMap::new(),
+            body: "Not found".to_string(),
+            json: None,
+        };
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(response.body(), "Not found");
+        assert!(response.json().is_none());
+    }
+
+    #[test]
+    fn test_build_client_with_insecure() {
+        let profile = MockProfile::new().with_insecure(true);
+
+        let client = HttpClient::new(&profile);
+
+        // We can't easily test the internal client configuration,
+        // but we can verify the client was created successfully
+        assert_eq!(client.endpoint.scheme(), Some(&"https".to_string()));
+        assert_eq!(client.endpoint.host(), "httpbin.org");
+    }
+
+    #[test]
+    fn test_build_client_with_proxy() {
+        let proxy_endpoint = Endpoint::parse("http://proxy.example.com:8080").unwrap();
+        let profile = MockProfile::new().with_proxy(proxy_endpoint);
+
+        let client = HttpClient::new(&profile);
+
+        // Verify client creation succeeds with proxy configuration
+        assert_eq!(client.endpoint.host(), "httpbin.org");
+    }
+
+    #[test]
+    fn test_build_request_with_auth() {
+        let profile = MockProfile::new()
+            .with_auth("testuser".to_string(), "testpass".to_string());
+        let client = HttpClient::new(&profile);
+        let request_args = MockRequest::new();
+
+        let request = client.build_request(&request_args);
+
+        // Basic auth should be present in the request
+        assert!(request.headers().get("authorization").is_some());
+    }
+
+    #[test]
+    fn test_build_request_different_methods() {
+        let profile = MockProfile::new();
+        let client = HttpClient::new(&profile);
+
+        let methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"];
+
+        for method in &methods {
+            let request_args = MockRequest::new().with_method(method);
+            let request = client.build_request(&request_args);
+
+            let expected_method = reqwest::Method::from_bytes(method.as_bytes()).unwrap();
+            assert_eq!(request.method(), &expected_method);
+        }
+    }
+
+    #[test]
+    fn test_build_request_with_empty_body() {
+        let profile = MockProfile::new();
+        let client = HttpClient::new(&profile);
+        let request_args = MockRequest::new().with_body("");
+
+        let request = client.build_request(&request_args);
+
+        // Empty body should still be included
+        assert!(request.body().is_some());
+    }
+
+    #[test]
+    fn test_build_request_complex_headers() {
+        let profile = MockProfile::new();
+        let client = HttpClient::new(&profile);
+
+        let mut headers = HashMap::new();
+        headers.insert("content-type".to_string(), "application/json; charset=utf-8".to_string());
+        headers.insert("accept-encoding".to_string(), "gzip, deflate, br".to_string());
+        headers.insert("x-custom-header".to_string(), "custom-value-with-special-chars!@#$".to_string());
+
+        let request_args = MockRequest::new().with_headers(headers);
+        let request = client.build_request(&request_args);
+
+        assert!(request.headers().get("content-type").is_some());
+        assert!(request.headers().get("accept-encoding").is_some());
+        assert!(request.headers().get("x-custom-header").is_some());
+    }
+
+    #[test]
+    fn test_mock_profile_builder_pattern() {
+        let mut headers = HashMap::new();
+        headers.insert("content-type".to_string(), "application/json".to_string());
+
+        let profile = MockProfile::new()
+            .with_auth("user".to_string(), "pass".to_string())
+            .with_headers(headers.clone());
+
+        assert_eq!(profile.user(), Some(&"user".to_string()));
+        assert_eq!(profile.password(), Some(&"pass".to_string()));
+        assert_eq!(profile.headers(), &headers);
+    }
+
+    #[test]
+    fn test_http_client_debug() {
+        let profile = MockProfile::new();
+        let client = HttpClient::new(&profile);
+
+        let debug_string = format!("{:?}", client);
+        assert!(debug_string.contains("HttpClient"));
+    }
+
+    #[test]
+    fn test_build_request_url_construction() {
+        let profile = MockProfile::new();
+        let client = HttpClient::new(&profile);
+
+        // Test different URL paths
+        let test_cases = vec![
+            ("/api/v1/users", None, "https://httpbin.org/api/v1/users"),
+            ("/search", Some("q=rust".to_string()), "https://httpbin.org/search?q=rust"),
+            ("", None, "https://httpbin.org/"),
+        ];
+
+        for (path, query, expected_url) in test_cases {
+            let url_path = crate::url::UrlPath::new(path.to_string(), query);
+            let mut request_args = MockRequest::new();
+            request_args.url_path = Some(url_path);
+
+            let request = client.build_request(&request_args);
+            assert_eq!(request.url().as_str(), expected_url);
+        }
+    }
+
+    #[test]
+    fn test_error_status_codes() {
+        let error_responses = vec![
+            (StatusCode::BAD_REQUEST, "400 Bad Request"),
+            (StatusCode::UNAUTHORIZED, "401 Unauthorized"),
+            (StatusCode::FORBIDDEN, "403 Forbidden"),
+            (StatusCode::NOT_FOUND, "404 Not Found"),
+            (StatusCode::INTERNAL_SERVER_ERROR, "500 Internal Server Error"),
+        ];
+
+        for (status, expected_body) in error_responses {
+            let response = HttpResponse {
+                status,
+                headers: HeaderMap::new(),
+                body: expected_body.to_string(),
+                json: None,
+            };
+
+            assert_eq!(response.status(), status);
+            assert!(response.body().contains(&status.as_u16().to_string()));
+        }
     }
 }

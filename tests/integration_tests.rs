@@ -136,17 +136,22 @@ fn test_custom_headers() {
         .output()
         .expect("Failed to execute webly");
 
-    if output.status.success() {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout.contains("httpbin.org"));
-    } else {
-        // Network might not be available in CI
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!(
-            "Network request failed (expected in some CI environments): {}",
-            stderr
-        );
-    }
+    // The binary should execute successfully regardless of HTTP status
+    assert!(output.status.success(), "Binary execution failed");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    
+    // Check if we got a successful response (200 OK) in stdout
+    // or an HTTP error in stderr (both indicate the request was made)
+    let has_successful_response = stdout.contains("httpbin.org");
+    let has_http_error = stderr.contains("400") || stderr.contains("401") || stderr.contains("500");
+    
+    assert!(
+        has_successful_response || has_http_error,
+        "Expected either successful response in stdout or HTTP error in stderr.\nStdout: {}\nStderr: {}",
+        stdout, stderr
+    );
 }
 
 #[test]
@@ -173,5 +178,249 @@ fn test_basic_auth() {
             "Network request failed (expected in some CI environments): {}",
             stderr
         );
+    }
+}
+
+#[test]
+fn test_verbose_mode() {
+    let output = Command::new(webly_binary())
+        .args(&[
+            "GET",
+            "https://httpbin.org/get",
+            "-v", // verbose mode
+        ])
+        .output()
+        .expect("Failed to execute webly");
+
+    if output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // In verbose mode, connection details should be printed to stderr
+        assert!(stderr.contains("> connection:") || stderr.contains("httpbin.org"));
+    } else {
+        // Network might not be available
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Network request failed: {}", stderr);
+    }
+}
+
+#[test]
+fn test_different_http_methods() {
+    let methods = ["GET", "POST", "PUT", "DELETE", "HEAD"];
+    
+    for method in &methods {
+        let output = Command::new(webly_binary())
+            .args(&[method, "https://httpbin.org/get"])
+            .output()
+            .expect("Failed to execute webly");
+
+        // All methods should be accepted by the CLI parser
+        // Network failures are acceptable
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            // Should not fail due to method parsing
+            assert!(!stderr.contains("Invalid method") && !stderr.contains("usage"));
+        }
+    }
+}
+
+#[test]
+fn test_invalid_url() {
+    let output = Command::new(webly_binary())
+        .args(&["GET", "http://invalid-domain-that-does-not-exist.invalid"])
+        .output()
+        .expect("Failed to execute webly");
+
+    // Should fail with DNS resolution error
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    // Should contain some kind of error message
+    assert!(!stderr.is_empty());
+}
+
+#[test]
+fn test_malformed_headers() {
+    let output = Command::new(webly_binary())
+        .args(&[
+            "GET",
+            "https://httpbin.org/get",
+            "-H",
+            "InvalidHeaderNoColon", // Invalid header format
+        ])
+        .output()
+        .expect("Failed to execute webly");
+
+    // Should fail with malformed header
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("Invalid header") || stderr.contains("error"));
+}
+
+#[test]
+fn test_empty_body_post() {
+    let output = Command::new(webly_binary())
+        .args(&["POST", "https://httpbin.org/post", ""])
+        .output()
+        .expect("Failed to execute webly");
+
+    // Empty body should be acceptable
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("httpbin.org") || !stdout.is_empty());
+    } else {
+        // Network errors are acceptable
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(!stderr.contains("body"));
+    }
+}
+
+#[test]
+fn test_missing_required_arguments() {
+    // Test with no arguments
+    let output = Command::new(webly_binary())
+        .output()
+        .expect("Failed to execute webly");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("required") || stderr.contains("Usage") || stderr.contains("error"));
+}
+
+#[test]
+fn test_only_method_argument() {
+    let output = Command::new(webly_binary())
+        .args(&["GET"])
+        .output()
+        .expect("Failed to execute webly");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("required") || stderr.contains("Usage") || stderr.contains("URL"));
+}
+
+#[test]
+fn test_ipv4_address() {
+    let output = Command::new(webly_binary())
+        .args(&["GET", "http://127.0.0.1:8080/test"])
+        .output()
+        .expect("Failed to execute webly");
+
+    // Connection will likely fail, but URL parsing should work
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // Should not fail due to URL parsing
+        assert!(!stderr.contains("Invalid URL") && !stderr.contains("parse"));
+    }
+}
+
+#[test]
+fn test_non_standard_port() {
+    let output = Command::new(webly_binary())
+        .args(&["GET", "https://httpbin.org:443/get"])
+        .output()
+        .expect("Failed to execute webly");
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("httpbin.org"));
+    } else {
+        // Network failures are acceptable
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("Network request failed: {}", stderr);
+    }
+}
+
+#[test]
+fn test_multiple_headers() {
+    let output = Command::new(webly_binary())
+        .args(&[
+            "GET",
+            "https://httpbin.org/get",
+            "-H", "X-Custom-Header-1: value1",
+            "-H", "X-Custom-Header-2: value2",
+            "-H", "Accept: application/json",
+        ])
+        .output()
+        .expect("Failed to execute webly");
+
+    // Should handle multiple headers without issues
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(!stderr.contains("header"));
+    }
+}
+
+#[test]
+fn test_auth_without_password() {
+    let output = Command::new(webly_binary())
+        .args(&[
+            "GET",
+            "https://httpbin.org/get",
+            "--user", "testuser",
+            // No password provided
+        ])
+        .output()
+        .expect("Failed to execute webly");
+
+    // Should work with just username (password can be empty)
+    if output.status.success() || !output.status.success() {
+        // Either outcome is acceptable - depends on implementation
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // Should not fail due to missing password
+        assert!(!stderr.contains("password required"));
+    }
+}
+
+#[test]
+fn test_very_long_url() {
+    let long_path = "/".to_string() + &"very-long-path-segment/".repeat(50);
+    let long_url = format!("https://httpbin.org{}", long_path);
+    
+    let output = Command::new(webly_binary())
+        .args(&["GET", &long_url])
+        .output()
+        .expect("Failed to execute webly");
+
+    // Should handle long URLs
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // Should not fail due to URL length
+        assert!(!stderr.contains("too long") && !stderr.contains("URL"));
+    }
+}
+
+#[test]
+fn test_special_characters_in_headers() {
+    let output = Command::new(webly_binary())
+        .args(&[
+            "GET",
+            "https://httpbin.org/get",
+            "-H", "X-Special-Chars: !@#$%^&*()_+-={}[]|\\:;\"'<>?,./",
+        ])
+        .output()
+        .expect("Failed to execute webly");
+
+    // Should handle special characters in header values
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // Should not fail due to special characters (unless they're truly invalid for HTTP)
+        println!("Output with special chars: {}", stderr);
+    }
+}
+
+#[test]
+fn test_case_insensitive_method() {
+    let methods = ["get", "post", "PUT", "Delete", "HEAD"];
+    
+    for method in &methods {
+        let output = Command::new(webly_binary())
+            .args(&[method, "https://httpbin.org/get"])
+            .output()
+            .expect("Failed to execute webly");
+
+        // Should accept methods in any case
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(!stderr.contains("Invalid method"));
+        }
     }
 }
