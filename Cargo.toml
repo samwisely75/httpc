@@ -11,6 +11,27 @@ readme = "README.md"
 keywords = ["http", "client", "cli", "curl", "api"]
 categories = ["command-line-utilities", "web-programming::http-client"]
 
+# Package metadata for deb/rpm generation
+[package.metadata.deb]
+maintainer = "Satoshi Iizuka"
+copyright = "2025, Satoshi Iizuka"
+extended-description = "A fast, modern HTTP client with profile-based configuration for the command line. Think of it as curl with persistent profiles and simplified syntax."
+depends = "$auto"
+section = "net"
+priority = "optional"
+assets = [
+    ["target/release/webly", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/webly/", "644"],
+]
+
+[package.metadata.generate-rpm]
+license = "Elastic-2.0"
+summary = "A lightweight, profile-based HTTP client"
+assets = [
+    { source = "target/release/webly", dest = "/usr/bin/webly", mode = "755" },
+    { source = "README.md", dest = "/usr/share/doc/webly/README.md", mode = "644" },
+]
+
 [dependencies]
 base64 = "0.22.1"
 flate2 = "1.1.0"
