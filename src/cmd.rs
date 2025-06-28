@@ -367,7 +367,7 @@ mod test {
 
     #[test]
     fn test_merge_req_functionality() {
-        let mut cmd_args = CommandLineArgs::parse_from(&[
+        let mut cmd_args = CommandLineArgs::parse_from([
             "http",
             "GET",
             "https://example.com/original",
@@ -416,7 +416,7 @@ mod test {
 
     #[test]
     fn test_merge_req_partial_override() {
-        let mut cmd_args = CommandLineArgs::parse_from(&[
+        let mut cmd_args = CommandLineArgs::parse_from([
             "http",
             "GET",
             "https://example.com/path",
@@ -483,7 +483,7 @@ mod test {
 
     #[test]
     fn test_profile_and_verbose_getters() {
-        let args = CommandLineArgs::parse_from(&[
+        let args = CommandLineArgs::parse_from([
             "http",
             "GET",
             "https://example.com",
@@ -498,7 +498,7 @@ mod test {
 
     #[test]
     fn test_default_profile_and_verbose() {
-        let args = CommandLineArgs::parse_from(&["http", "GET", "https://example.com"]);
+        let args = CommandLineArgs::parse_from(["http", "GET", "https://example.com"]);
 
         assert_eq!(args.profile(), "default");
         assert!(!args.verbose());
@@ -506,7 +506,7 @@ mod test {
 
     #[test]
     fn test_http_connection_profile_implementation() {
-        let args = CommandLineArgs::parse_from(&[
+        let args = CommandLineArgs::parse_from([
             "http",
             "GET",
             "https://user:pass@example.com:8080/path",
@@ -552,7 +552,7 @@ mod test {
 
     #[test]
     fn test_http_request_args_implementation() {
-        let args = CommandLineArgs::parse_from(&[
+        let args = CommandLineArgs::parse_from([
             "http",
             "POST",
             "https://example.com/api/test?param=value",
@@ -578,7 +578,7 @@ mod test {
 
     #[test]
     fn test_method_case_normalization() {
-        let args = CommandLineArgs::parse_from(&[
+        let args = CommandLineArgs::parse_from([
             "http",
             "post", // lowercase
             "https://example.com",
@@ -591,11 +591,11 @@ mod test {
     fn test_insecure_flag_handling() {
         // Test with insecure flag
         let args_insecure =
-            CommandLineArgs::parse_from(&["http", "GET", "https://example.com", "-k"]);
+            CommandLineArgs::parse_from(["http", "GET", "https://example.com", "-k"]);
         assert_eq!(args_insecure.insecure(), Some(true));
 
         // Test without insecure flag
-        let args_secure = CommandLineArgs::parse_from(&["http", "GET", "https://example.com"]);
+        let args_secure = CommandLineArgs::parse_from(["http", "GET", "https://example.com"]);
         assert_eq!(args_secure.insecure(), None);
     }
 

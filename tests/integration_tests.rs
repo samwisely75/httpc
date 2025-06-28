@@ -33,7 +33,7 @@ fn test_version_command() {
 #[test]
 fn test_basic_get_request() {
     let output = Command::new(webly_binary())
-        .args(&["GET", "https://httpbin.org/get"])
+        .args(["GET", "https://httpbin.org/get"])
         .output()
         .expect("Failed to execute webly");
 
@@ -53,7 +53,7 @@ fn test_basic_get_request() {
 #[test]
 fn test_post_with_stdin() {
     let mut cmd = Command::new(webly_binary())
-        .args(&["POST", "https://httpbin.org/post"])
+        .args(["POST", "https://httpbin.org/post"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -97,7 +97,7 @@ fn test_profile_configuration() {
 
     // Set the config file location via environment variable
     let output = Command::new(webly_binary())
-        .args(&["-p", "test", "GET", "/get"])
+        .args(["-p", "test", "GET", "/get"])
         .env("HOME", temp_dir.path())
         .output()
         .expect("Failed to execute webly");
@@ -113,7 +113,7 @@ fn test_profile_configuration() {
 #[test]
 fn test_invalid_arguments() {
     let output = Command::new(webly_binary())
-        .args(&["INVALID"])
+        .args(["INVALID"])
         .output()
         .expect("Failed to execute webly");
 
@@ -125,7 +125,7 @@ fn test_invalid_arguments() {
 #[test]
 fn test_custom_headers() {
     let output = Command::new(webly_binary())
-        .args(&[
+        .args([
             "GET",
             "https://httpbin.org/get",
             "-H",
@@ -157,7 +157,7 @@ fn test_custom_headers() {
 #[test]
 fn test_basic_auth() {
     let output = Command::new(webly_binary())
-        .args(&[
+        .args([
             "GET",
             "https://httpbin.org/basic-auth/user/pass",
             "--user",
@@ -184,7 +184,7 @@ fn test_basic_auth() {
 #[test]
 fn test_verbose_mode() {
     let output = Command::new(webly_binary())
-        .args(&[
+        .args([
             "GET",
             "https://httpbin.org/get",
             "-v", // verbose mode
@@ -209,7 +209,7 @@ fn test_different_http_methods() {
 
     for method in &methods {
         let output = Command::new(webly_binary())
-            .args(&[method, "https://httpbin.org/get"])
+            .args([method, "https://httpbin.org/get"])
             .output()
             .expect("Failed to execute webly");
 
@@ -226,7 +226,7 @@ fn test_different_http_methods() {
 #[test]
 fn test_invalid_url() {
     let output = Command::new(webly_binary())
-        .args(&["GET", "http://invalid-domain-that-does-not-exist.invalid"])
+        .args(["GET", "http://invalid-domain-that-does-not-exist.invalid"])
         .output()
         .expect("Failed to execute webly");
 
@@ -240,7 +240,7 @@ fn test_invalid_url() {
 #[test]
 fn test_malformed_headers() {
     let output = Command::new(webly_binary())
-        .args(&[
+        .args([
             "GET",
             "https://httpbin.org/get",
             "-H",
@@ -258,7 +258,7 @@ fn test_malformed_headers() {
 #[test]
 fn test_empty_body_post() {
     let output = Command::new(webly_binary())
-        .args(&["POST", "https://httpbin.org/post", ""])
+        .args(["POST", "https://httpbin.org/post", ""])
         .output()
         .expect("Failed to execute webly");
 
@@ -288,7 +288,7 @@ fn test_missing_required_arguments() {
 #[test]
 fn test_only_method_argument() {
     let output = Command::new(webly_binary())
-        .args(&["GET"])
+        .args(["GET"])
         .output()
         .expect("Failed to execute webly");
 
@@ -300,7 +300,7 @@ fn test_only_method_argument() {
 #[test]
 fn test_ipv4_address() {
     let output = Command::new(webly_binary())
-        .args(&["GET", "http://127.0.0.1:8080/test"])
+        .args(["GET", "http://127.0.0.1:8080/test"])
         .output()
         .expect("Failed to execute webly");
 
@@ -315,7 +315,7 @@ fn test_ipv4_address() {
 #[test]
 fn test_non_standard_port() {
     let output = Command::new(webly_binary())
-        .args(&["GET", "https://httpbin.org:443/get"])
+        .args(["GET", "https://httpbin.org:443/get"])
         .output()
         .expect("Failed to execute webly");
 
@@ -332,7 +332,7 @@ fn test_non_standard_port() {
 #[test]
 fn test_multiple_headers() {
     let output = Command::new(webly_binary())
-        .args(&[
+        .args([
             "GET",
             "https://httpbin.org/get",
             "-H",
@@ -355,7 +355,7 @@ fn test_multiple_headers() {
 #[test]
 fn test_auth_without_password() {
     let output = Command::new(webly_binary())
-        .args(&[
+        .args([
             "GET",
             "https://httpbin.org/get",
             "--user",
@@ -380,7 +380,7 @@ fn test_very_long_url() {
     let long_url = format!("https://httpbin.org{}", long_path);
 
     let output = Command::new(webly_binary())
-        .args(&["GET", &long_url])
+        .args(["GET", &long_url])
         .output()
         .expect("Failed to execute webly");
 
@@ -395,7 +395,7 @@ fn test_very_long_url() {
 #[test]
 fn test_special_characters_in_headers() {
     let output = Command::new(webly_binary())
-        .args(&[
+        .args([
             "GET",
             "https://httpbin.org/get",
             "-H",
@@ -418,7 +418,7 @@ fn test_case_insensitive_method() {
 
     for method in &methods {
         let output = Command::new(webly_binary())
-            .args(&[method, "https://httpbin.org/get"])
+            .args([method, "https://httpbin.org/get"])
             .output()
             .expect("Failed to execute webly");
 
