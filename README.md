@@ -3,7 +3,7 @@
 [![CI](https://github.com/blueeaglesam/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/blueeaglesam/webly/actions/workflows/ci.yml)
 [![Release](https://github.com/blueeaglesam/webly/actions/workflows/release.yml/badge.svg)](https://github.com/blueeaglesam/webly/actions/workflows/release.yml)
 [![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Elastic%20License%202.0-blue.svg)](LICENSE)
 [![Downloads](https://img.shields.io/crates/d/webly.svg)](https://crates.io/crates/webly)
 
 A lightweight, profile-based HTTP client that allows you to talk to web servers with minimal effort. Think of it as `curl` with persistent profiles and simplified syntax.
@@ -294,7 +294,7 @@ webly POST https://api.example.com/form \
 cat document.json | webly PUT https://api.example.com/documents/123
 ```
 
-### Elasticsearch/OpenSearch Examples
+### Elasticsearch Examples
 
 ```bash
 # Check cluster health
@@ -432,9 +432,9 @@ Python scripts become unwieldy for this use case, requiring multiple files and d
 
 ## License
 
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at:
+Licensed under the Elastic License 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at:
 
-[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
+[https://www.elastic.co/licensing/elastic-license](https://www.elastic.co/licensing/elastic-license)
 
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
