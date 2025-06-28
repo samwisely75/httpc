@@ -17,6 +17,7 @@ A lightweight, profile-based HTTP client that allows you to talk to web servers 
 - [Configuration](#configuration)
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
+- [Why webly and not curl?](#why-webly-and-not-curl)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -116,6 +117,27 @@ webly -p production GET /api/data \
     --password different-pass
 ```
 
+### Shell Escaping
+
+When using special characters in URLs or query parameters, you may need to escape them or use quotes:
+
+```bash
+# Query parameters with special characters - escape or quote
+webly GET "/api/search?q=hello world&sort=date"
+webly GET /api/search\?q=hello\ world\&sort=date
+
+# Complex URLs with fragments
+webly GET "https://api.example.com/items?filter=status:active&limit=10#results"
+
+# JSON with special characters in URLs
+webly POST "/api/items?category=tools&type=screws" '{
+    "name": "Phillips head screw",
+    "size": "M4"
+}'
+```
+
+**Tip:** When in doubt, wrap URLs in double quotes to avoid shell interpretation issues.
+
 For all available options, run:
 
 ```bash
@@ -128,9 +150,9 @@ webly --help
 - **Multiple HTTP methods** - Support GET, POST, PUT, DELETE, HEAD, etc.
 - **Authentication support** - Basic auth, custom headers
 - **SSL/TLS support** - Custom CA certificates, insecure mode option
-- **Proxy support** - HTTP proxy configuration  
+- **Proxy support** - HTTP proxy configuration
 - **Standard input support** - Read request body from stdin
-- **Multiple compression** - gzip, deflate, zstd
+- **Multiple compression** - Supports gzip, deflate, zstd
 - **Flexible URL handling** - Absolute or relative URLs with profile base
 - **Verbose mode** - Detailed request/response information
 
@@ -389,42 +411,34 @@ cat ~/.webly/profiles
 webly -p your-profile GET /simple/endpoint
 ```
 
-## Motivation
+## Why webly and not curl?
 
-As a consultant working with APIs daily, especially Elasticsearch, I found that existing tools had limitations:
+As an Elasticsearch consultant, I work with Elasticsearch clusters day in and day out. Kibana Dev Tools is ideal, but often unavailable in client environments where I need to SSH into nodes, check logs, and run diagnostic queries from the terminal.
 
-**Kibana Dev Tools** is excellent but not always available in client environments.
-
-**curl** works everywhere but becomes cumbersome with repetitive parameters:
+`curl` works, but it becomes tedious with repetitive parameters:
 
 ```bash
-curl -XGET \
-     -u "elastic:password" \
-     -H "content-type: application/json" \
-     https://prod-cluster.es.us-central1.gcp.cloud.es.io/_cat/indices?v
+curl -XGET -u elastic:password -H "content-type: application/json" \
+     https://elastic-prod.es.us-central1.gcp.cloud.es.io/_cat/indices?v
 ```
 
-**What I wanted** was the simplicity of Kibana Dev Tools:
+In Kibana Dev Tools, this is simply:
 
 ```bash
 GET /_cat/indices?v
 ```
 
-**webly bridges this gap** by combining curl's universality with profile-based simplicity:
-
-```bash
-webly GET /_cat/indices?v  # Uses default profile
-```
+I wanted that same simplicity in the terminal by bringing a profile system to it for easily switching between multiple clusters—like `aws-cli` does.
 
 ### Why Rust?
 
-- **Single binary** - No runtime dependencies, easy to deploy
-- **Cross-platform** - Works on Linux, macOS, Windows  
-- **Performance** - Fast startup and execution
-- **Reliability** - Memory safety and robust error handling
-- **Maintainability** - Strong type system prevents many bugs
+Python and Bash scripts work but become unwieldy and hard to maintain. Sometimes I even need to work with Python 2.6/2.7, which complicates the code due to compatibility issues. Rust works perfectly because:
 
-Python scripts become unwieldy for this use case, requiring multiple files and dependency management. Rust delivers a professional tool that "just works" everywhere.
+- **Single binary** - No runtime dependencies, easy deployment
+- **Performance** - Native speed, as fast as curl
+- **Cross-platform** - Works everywhere (Linux, macOS, Windows)
+- **Reliability** - Memory safety and robust error handling
+- **No compatibility hell** - Unlike Python scripts with version dependencies
 
 ---
 
