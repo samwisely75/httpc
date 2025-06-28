@@ -169,7 +169,7 @@ fn print_request(req: &impl HttpRequestArgs) {
         .unwrap_or("<none>".to_string());
     eprintln!("> request:");
     eprintln!(">   method: {}", req.method().unwrap());
-    eprintln!(">   path: {}", url);
+    eprintln!(">   path: {url}");
     eprintln!(
         ">   body: {}",
         req.body()

@@ -553,7 +553,7 @@ mod tests {
         let profile = MockProfile::new();
         let client = HttpClient::new(&profile);
 
-        let debug_string = format!("{:?}", client);
+        let debug_string = format!("{client:?}");
         assert!(debug_string.contains("HttpClient"));
     }
 

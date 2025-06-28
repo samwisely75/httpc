@@ -60,7 +60,7 @@ where
 
     loop {
         if !msg.is_empty() {
-            eprint!("{}", msg);
+            eprint!("{msg}");
         }
 
         let mut buffer = String::new();
@@ -92,7 +92,7 @@ pub fn ask_path(i: &Stdin, msg: &str) -> Result<String> {
         if expand_path.exists() {
             return Ok(expand_path.to_str().unwrap().to_string());
         } else {
-            eprintln!("Path not found: {}", str);
+            eprintln!("Path not found: {str}");
         }
     }
 }
@@ -160,7 +160,7 @@ mod tests {
         };
 
         // Test Debug trait
-        let debug_str = format!("{:?}", args);
+        let debug_str = format!("{args:?}");
         assert!(debug_str.contains("StdinArgs"));
 
         // Test Clone trait

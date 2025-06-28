@@ -120,7 +120,7 @@ fn vec_to_hashmap(vec: Vec<String>) -> HashMap<String, String> {
         .map(|s| {
             let parts: Vec<&str> = s.splitn(2, ':').collect();
             if parts.len() != 2 {
-                panic!("Invalid header format: {}", s);
+                panic!("Invalid header format: {s}");
             }
             (
                 parts[0].trim().to_string().to_lowercase(),
@@ -315,10 +315,7 @@ mod test {
 
     #[test]
     fn cmd_args_parse_should_decompose_values_properly() {
-        let url = format!(
-            "{}://{}:{}{}?{}",
-            TEST_SCHEME, TEST_HOST, TEST_PORT, TEST_URL_PATH, TEST_QUERY
-        );
+        let url = format!("{TEST_SCHEME}://{TEST_HOST}:{TEST_PORT}{TEST_URL_PATH}?{TEST_QUERY}");
         let params = vec![
             "http",
             TEST_METHOD,

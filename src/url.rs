@@ -21,7 +21,7 @@ impl FromStr for Endpoint {
         let caps = Regex::new(REGEX_PATTERNS_URL)
             .unwrap()
             .captures(s)
-            .ok_or_else(|| format!("Failed to parse endpoint from string: {}", s))?;
+            .ok_or_else(|| format!("Failed to parse endpoint from string: {s}"))?;
 
         let proto_as_host = caps.name("host").is_none() && caps.name("scheme").is_some();
 
@@ -81,16 +81,16 @@ impl Display for Endpoint {
         let mut buffer = String::new();
 
         if let Some(scheme) = &self.scheme {
-            buffer.push_str(&format!("{}://", scheme));
+            buffer.push_str(&format!("{scheme}://"));
         }
 
         buffer.push_str(&self.host);
 
-        if let Some(port) = self.port.map(|p| format!(":{}", p)) {
+        if let Some(port) = self.port.map(|p| format!(":{p}")) {
             buffer.push_str(&port);
         }
 
-        write!(f, "{}", buffer)
+        write!(f, "{buffer}")
     }
 }
 
@@ -106,7 +106,7 @@ impl UrlPath {
         let path = if path.is_empty() && query.is_some() {
             "".to_string() // Keep empty path when there's a query
         } else if !path.starts_with("/") && !path.is_empty() {
-            format!("/{}", path) // Add leading slash for non-empty paths
+            format!("/{path}") // Add leading slash for non-empty paths
         } else {
             path
         };
@@ -131,9 +131,9 @@ impl Display for UrlPath {
             buffer.push_str(&self.path);
         }
         if let Some(query) = &self.query {
-            buffer.push_str(&format!("?{}", query));
+            buffer.push_str(&format!("?{query}"));
         }
-        write!(f, "{}", buffer)
+        write!(f, "{buffer}")
     }
 }
 
@@ -300,7 +300,7 @@ impl std::fmt::Display for Url {
             url.push_str(&self.path.as_ref().unwrap().to_string());
         }
 
-        write!(f, "{}", url)
+        write!(f, "{url}")
     }
 }
 

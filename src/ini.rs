@@ -182,7 +182,7 @@ impl IniProfileStore {
         }
 
         for (k, v) in profile.headers.iter() {
-            section.set(format!("@{}", k), v);
+            section.set(format!("@{k}"), v);
         }
 
         ini.write_to_file(&self.file_path).unwrap();
@@ -206,10 +206,7 @@ pub fn get_blank_profile() -> IniProfile {
 
 #[allow(dead_code)]
 pub fn ask_new_profile(name: &str, i: &std::io::Stdin) -> Result<Option<IniProfile>> {
-    let init_msg = format!(
-        "Profile \"{}\" doesn't exist. Do you want to create it? [y/N]: ",
-        name
-    );
+    let init_msg = format!("Profile \"{name}\" doesn't exist. Do you want to create it? [y/N]: ");
     if !ask_binary(i, &init_msg)? {
         return Ok(None);
     }
@@ -277,25 +274,15 @@ mod test {
 
     fn create_ini_file() -> Result<TempPath> {
         let content = format!(
-            "[{}]\n\
-             host={}://{}:{}\n\
-             user={}\n\
-             password={}\n\
-             insecure={}\n\
-             ca_cert={}\n\
-             @Content-Type={}\n\
-             @User-Agent={}\n\
-             ",
-            DEFAULT_INI_SECTION,
-            TEST_SCHEME,
-            TEST_HOST,
-            TEST_PORT,
-            TEST_USER,
-            TEST_PASSWORD,
-            TEST_INSECURE,
-            TEST_CA_CERT,
-            TEST_CONTENT_TYPE,
-            TEST_USER_AGENT
+            "[{DEFAULT_INI_SECTION}]\n\
+             host={TEST_SCHEME}://{TEST_HOST}:{TEST_PORT}\n\
+             user={TEST_USER}\n\
+             password={TEST_PASSWORD}\n\
+             insecure={TEST_INSECURE}\n\
+             ca_cert={TEST_CA_CERT}\n\
+             @Content-Type={TEST_CONTENT_TYPE}\n\
+             @User-Agent={TEST_USER_AGENT}\n\
+             "
         );
 
         let mut file = NamedTempFile::new()?;
@@ -532,10 +519,9 @@ mod test {
     #[test]
     fn test_ini_file_without_host() -> Result<()> {
         let content = format!(
-            "[{}]\n\
-             user={}\n\
-             password={}\n",
-            DEFAULT_INI_SECTION, TEST_USER, TEST_PASSWORD
+            "[{DEFAULT_INI_SECTION}]\n\
+             user={TEST_USER}\n\
+             password={TEST_PASSWORD}\n"
         );
 
         let mut file = NamedTempFile::new()?;
@@ -556,10 +542,9 @@ mod test {
     #[test]
     fn test_ini_profile_with_invalid_host() -> Result<()> {
         let content = format!(
-            "[{}]\n\
+            "[{DEFAULT_INI_SECTION}]\n\
              host=invalid://://host\n\
-             user={}\n",
-            DEFAULT_INI_SECTION, TEST_USER
+             user={TEST_USER}\n"
         );
 
         let mut file = NamedTempFile::new()?;
@@ -662,12 +647,11 @@ mod test {
     #[test]
     fn test_profile_with_special_characters() -> Result<()> {
         let content = format!(
-            "[{}]\n\
+            "[{DEFAULT_INI_SECTION}]\n\
              host=https://example.com\n\
              user=user@domain.com\n\
              password=p@ss!w0rd#123\n\
-             @custom-header=value-with-dashes\n",
-            DEFAULT_INI_SECTION
+             @custom-header=value-with-dashes\n"
         );
 
         let mut file = NamedTempFile::new()?;
@@ -703,10 +687,9 @@ mod test {
 
         for (input, expected) in test_cases {
             let content = format!(
-                "[{}]\n\
+                "[{DEFAULT_INI_SECTION}]\n\
                  host=https://example.com\n\
-                 insecure={}\n",
-                DEFAULT_INI_SECTION, input
+                 insecure={input}\n"
             );
 
             let mut file = NamedTempFile::new()?;
@@ -716,7 +699,7 @@ mod test {
             let ini_store = IniProfileStore::new(&path);
             let profile = ini_store.get_profile(DEFAULT_INI_SECTION)?.unwrap();
 
-            assert_eq!(profile.insecure(), expected, "Failed for input: {}", input);
+            assert_eq!(profile.insecure(), expected, "Failed for input: {input}");
         }
 
         Ok(())

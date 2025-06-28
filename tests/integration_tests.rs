@@ -43,10 +43,7 @@ fn test_basic_get_request() {
     } else {
         // Network might not be available in CI, so we just check the binary runs
         let stderr = String::from_utf8_lossy(&output.stderr);
-        println!(
-            "Network request failed (expected in some CI environments): {}",
-            stderr
-        );
+        println!("Network request failed (expected in some CI environments): {stderr}");
     }
 }
 
@@ -75,10 +72,7 @@ fn test_post_with_stdin() {
     } else {
         // Network might not be available in CI
         let stderr = String::from_utf8_lossy(&output.stderr);
-        println!(
-            "Network request failed (expected in some CI environments): {}",
-            stderr
-        );
+        println!("Network request failed (expected in some CI environments): {stderr}");
     }
 }
 
@@ -149,8 +143,7 @@ fn test_custom_headers() {
 
     assert!(
         has_successful_response || has_http_error,
-        "Expected either successful response in stdout or HTTP error in stderr.\nStdout: {}\nStderr: {}",
-        stdout, stderr
+        "Expected either successful response in stdout or HTTP error in stderr.\nStdout: {stdout}\nStderr: {stderr}"
     );
 }
 
@@ -174,10 +167,7 @@ fn test_basic_auth() {
     } else {
         // Network might not be available in CI
         let stderr = String::from_utf8_lossy(&output.stderr);
-        println!(
-            "Network request failed (expected in some CI environments): {}",
-            stderr
-        );
+        println!("Network request failed (expected in some CI environments): {stderr}");
     }
 }
 
@@ -199,7 +189,7 @@ fn test_verbose_mode() {
     } else {
         // Network might not be available
         let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Network request failed: {}", stderr);
+        println!("Network request failed: {stderr}");
     }
 }
 
@@ -325,7 +315,7 @@ fn test_non_standard_port() {
     } else {
         // Network failures are acceptable
         let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("Network request failed: {}", stderr);
+        println!("Network request failed: {stderr}");
     }
 }
 
@@ -377,7 +367,7 @@ fn test_auth_without_password() {
 #[test]
 fn test_very_long_url() {
     let long_path = "/".to_string() + &"very-long-path-segment/".repeat(50);
-    let long_url = format!("https://httpbin.org{}", long_path);
+    let long_url = format!("https://httpbin.org{long_path}");
 
     let output = Command::new(webly_binary())
         .args(["GET", &long_url])
@@ -408,7 +398,7 @@ fn test_special_characters_in_headers() {
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         // Should not fail due to special characters (unless they're truly invalid for HTTP)
-        println!("Output with special chars: {}", stderr);
+        println!("Output with special chars: {stderr}");
     }
 }
 
