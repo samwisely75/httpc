@@ -26,9 +26,15 @@ impl FromStr for Endpoint {
         let proto_as_host = caps.name("host").is_none() && caps.name("scheme").is_some();
 
         let host = if proto_as_host {
-            caps.name("scheme").ok_or("Missing scheme/host")?.as_str().to_string()
+            caps.name("scheme")
+                .ok_or("Missing scheme/host")?
+                .as_str()
+                .to_string()
         } else {
-            caps.name("host").ok_or("Missing host")?.as_str().to_string()
+            caps.name("host")
+                .ok_or("Missing host")?
+                .as_str()
+                .to_string()
         };
 
         let scheme = if proto_as_host {
@@ -73,7 +79,7 @@ impl Endpoint {
 impl Display for Endpoint {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut buffer = String::new();
-        
+
         if let Some(scheme) = &self.scheme {
             buffer.push_str(&format!("{}://", scheme));
         }
@@ -104,7 +110,7 @@ impl UrlPath {
         } else {
             path
         };
-        
+
         UrlPath { path, query }
     }
 
@@ -193,12 +199,9 @@ impl Url {
         };
 
         let query = url_elems.name("query").map(|m| m.as_str().to_string());
-        
+
         let path = if path.is_some() || query.is_some() {
-            Some(UrlPath::new(
-                path.unwrap_or_else(|| "".to_string()),
-                query,
-            ))
+            Some(UrlPath::new(path.unwrap_or_else(|| "".to_string()), query))
         } else {
             None
         };
@@ -391,34 +394,40 @@ mod test {
         #[test]
         fn test_url_with_complex_query() {
             let url = Url::parse("https://example.com/search?q=rust+lang&sort=date&limit=10");
-            assert_eq!(url.query(), Some(&"q=rust+lang&sort=date&limit=10".to_string()));
+            assert_eq!(
+                url.query(),
+                Some(&"q=rust+lang&sort=date&limit=10".to_string())
+            );
         }
 
         #[test]
         fn test_url_new_with_endpoint_and_path() {
             let endpoint = Endpoint::parse("https://api.example.com:443").unwrap();
             let url_path = UrlPath::new("/v1/users".to_string(), Some("page=1".to_string()));
-            
+
             let url = Url::new(Some(&endpoint), Some(&url_path));
-            
-            assert_eq!(url.to_string(), "https://api.example.com:443/v1/users?page=1");
+
+            assert_eq!(
+                url.to_string(),
+                "https://api.example.com:443/v1/users?page=1"
+            );
         }
 
         #[test]
         fn test_url_new_with_endpoint_only() {
             let endpoint = Endpoint::parse("https://example.com").unwrap();
-            
+
             let url = Url::new(Some(&endpoint), None);
-            
+
             assert_eq!(url.to_string(), "https://example.com");
         }
 
         #[test]
         fn test_url_new_with_path_only() {
             let url_path = UrlPath::new("/api/test".to_string(), None);
-            
+
             let url = Url::new(None, Some(&url_path));
-            
+
             assert_eq!(url.to_string(), "/api/test");
         }
 
@@ -427,11 +436,11 @@ mod test {
             // Empty path
             let url1 = Url::parse("https://example.com");
             assert_eq!(url1.path(), None);
-            
+
             // Root path
             let url2 = Url::parse("https://example.com/");
             assert_eq!(url2.path(), Some(&"/".to_string()));
-            
+
             // Query without path
             let url3 = Url::parse("https://example.com?query=value");
             assert_eq!(url3.query(), Some(&"query=value".to_string()));
@@ -440,25 +449,25 @@ mod test {
         #[test]
         fn test_url_conversion_methods() {
             let url = Url::parse("https://example.com:8080/api/v1?key=value");
-            
+
             // Test to_endpoint
             let endpoint = url.to_endpoint().unwrap();
             assert_eq!(endpoint.host(), "example.com");
             assert_eq!(endpoint.port(), Some(8080));
             assert_eq!(endpoint.scheme(), Some(&"https".to_string()));
-            
+
             // Test to_url_path
             let url_path = url.to_url_path().unwrap();
             assert_eq!(url_path.path(), "/api/v1");
             assert_eq!(url_path.query(), Some(&"key=value".to_string()));
         }
-        
+
         #[test]
         fn test_urlpath_new() {
             let path1 = UrlPath::new("/test".to_string(), None);
             assert_eq!(path1.path(), "/test");
             assert_eq!(path1.query(), None);
-            
+
             let path2 = UrlPath::new("/test".to_string(), Some("param=value".to_string()));
             assert_eq!(path2.path(), "/test");
             assert_eq!(path2.query(), Some(&"param=value".to_string()));
@@ -468,8 +477,11 @@ mod test {
         fn test_urlpath_to_string() {
             let path1 = UrlPath::new("/api/test".to_string(), None);
             assert_eq!(path1.to_string(), "/api/test");
-            
-            let path2 = UrlPath::new("/api/test".to_string(), Some("key=value&foo=bar".to_string()));
+
+            let path2 = UrlPath::new(
+                "/api/test".to_string(),
+                Some("key=value&foo=bar".to_string()),
+            );
             assert_eq!(path2.to_string(), "/api/test?key=value&foo=bar");
         }
     }
@@ -484,7 +496,7 @@ mod test {
                 Some(8080),
                 Some("https".to_string()),
             );
-            
+
             assert_eq!(endpoint.host(), "example.com");
             assert_eq!(endpoint.port(), Some(8080));
             assert_eq!(endpoint.scheme(), Some(&"https".to_string()));
@@ -492,12 +504,8 @@ mod test {
 
         #[test]
         fn test_endpoint_without_scheme() {
-            let endpoint = Endpoint::new(
-                "example.com".to_string(),
-                Some(80),
-                None,
-            );
-            
+            let endpoint = Endpoint::new("example.com".to_string(), Some(80), None);
+
             assert_eq!(endpoint.host(), "example.com");
             assert_eq!(endpoint.port(), Some(80));
             assert_eq!(endpoint.scheme(), None);
@@ -506,10 +514,26 @@ mod test {
         #[test]
         fn test_endpoint_to_string_variations() {
             let cases = vec![
-                (Endpoint::new("example.com".to_string(), None, Some("https".to_string())), "https://example.com"),
-                (Endpoint::new("example.com".to_string(), Some(8080), Some("https".to_string())), "https://example.com:8080"),
-                (Endpoint::new("example.com".to_string(), Some(80), None), "example.com:80"),
-                (Endpoint::new("example.com".to_string(), None, None), "example.com"),
+                (
+                    Endpoint::new("example.com".to_string(), None, Some("https".to_string())),
+                    "https://example.com",
+                ),
+                (
+                    Endpoint::new(
+                        "example.com".to_string(),
+                        Some(8080),
+                        Some("https".to_string()),
+                    ),
+                    "https://example.com:8080",
+                ),
+                (
+                    Endpoint::new("example.com".to_string(), Some(80), None),
+                    "example.com:80",
+                ),
+                (
+                    Endpoint::new("example.com".to_string(), None, None),
+                    "example.com",
+                ),
             ];
 
             for (endpoint, expected) in cases {
@@ -521,12 +545,7 @@ mod test {
         fn test_endpoint_parse_error_cases() {
             // These would ideally return errors, but the current implementation might not
             // handle all edge cases. We'll test what the current behavior is.
-            let test_cases = vec![
-                "://invalid",
-                "https://",
-                "https://:8080",
-                "",
-            ];
+            let test_cases = vec!["://invalid", "https://", "https://:8080", ""];
 
             for case in test_cases {
                 let result = Endpoint::parse(case);
@@ -562,7 +581,7 @@ mod test {
         fn test_endpoint_standard_ports() {
             let http_endpoint = Endpoint::parse("http://example.com:80").unwrap();
             assert_eq!(http_endpoint.port(), Some(80));
-            
+
             let https_endpoint = Endpoint::parse("https://example.com:443").unwrap();
             assert_eq!(https_endpoint.port(), Some(443));
         }

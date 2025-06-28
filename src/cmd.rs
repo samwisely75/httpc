@@ -379,11 +379,17 @@ mod test {
         // Create a mock HttpRequestArgs to merge
         let mut headers = HashMap::new();
         headers.insert("new-header".to_string(), "new-value".to_string());
-        headers.insert("original-header".to_string(), "overridden-value".to_string());
+        headers.insert(
+            "original-header".to_string(),
+            "overridden-value".to_string(),
+        );
 
         let stdin_args = MockStdinArgs {
             method: Some("POST".to_string()),
-            url_path: Some(crate::url::UrlPath::new("/new/path".to_string(), Some("query=test".to_string()))),
+            url_path: Some(crate::url::UrlPath::new(
+                "/new/path".to_string(),
+                Some("query=test".to_string()),
+            )),
             body: Some("new body".to_string()),
             headers,
         };
@@ -393,11 +399,17 @@ mod test {
         // Check that values were merged correctly
         assert_eq!(cmd_args.method().unwrap(), "POST");
         assert_eq!(cmd_args.body().unwrap(), "new body");
-        
+
         let request_headers: &dyn HttpRequestArgs = &cmd_args;
-        assert_eq!(request_headers.headers().get("new-header").unwrap(), "new-value");
-        assert_eq!(request_headers.headers().get("original-header").unwrap(), "overridden-value");
-        
+        assert_eq!(
+            request_headers.headers().get("new-header").unwrap(),
+            "new-value"
+        );
+        assert_eq!(
+            request_headers.headers().get("original-header").unwrap(),
+            "overridden-value"
+        );
+
         assert_eq!(cmd_args.url.path(), Some(&"/new/path".to_string()));
         assert_eq!(cmd_args.url.query(), Some(&"query=test".to_string()));
     }
@@ -413,10 +425,10 @@ mod test {
 
         // Create a mock HttpRequestArgs with only some fields
         let stdin_args = MockStdinArgs {
-            method: None, // Don't override method
-            url_path: None, // Don't override URL path
+            method: None,                       // Don't override method
+            url_path: None,                     // Don't override URL path
             body: Some("new body".to_string()), // Override body
-            headers: HashMap::new(), // No headers
+            headers: HashMap::new(),            // No headers
         };
 
         cmd_args.merge_req(&stdin_args);
@@ -461,9 +473,12 @@ mod test {
     fn test_vec_to_hashmap_header_with_multiple_colons() {
         let headers = vec!["Content-Type: application/json; charset=utf-8".to_string()];
         let result = vec_to_hashmap(headers);
-        
+
         assert_eq!(result.len(), 1);
-        assert_eq!(result.get("content-type").unwrap(), "application/json; charset=utf-8");
+        assert_eq!(
+            result.get("content-type").unwrap(),
+            "application/json; charset=utf-8"
+        );
     }
 
     #[test]
@@ -483,11 +498,7 @@ mod test {
 
     #[test]
     fn test_default_profile_and_verbose() {
-        let args = CommandLineArgs::parse_from(&[
-            "http",
-            "GET", 
-            "https://example.com",
-        ]);
+        let args = CommandLineArgs::parse_from(&["http", "GET", "https://example.com"]);
 
         assert_eq!(args.profile(), "default");
         assert!(!args.verbose());
@@ -554,12 +565,15 @@ mod test {
 
         assert_eq!(request.method().unwrap(), "POST");
         assert_eq!(request.body().unwrap(), "request body content");
-        
+
         let url_path = request.url_path().unwrap();
         assert_eq!(url_path.path(), "/api/test");
         assert_eq!(url_path.query(), Some(&"param=value".to_string()));
 
-        assert_eq!(request.headers().get("content-type").unwrap(), "application/json");
+        assert_eq!(
+            request.headers().get("content-type").unwrap(),
+            "application/json"
+        );
     }
 
     #[test]
@@ -576,20 +590,12 @@ mod test {
     #[test]
     fn test_insecure_flag_handling() {
         // Test with insecure flag
-        let args_insecure = CommandLineArgs::parse_from(&[
-            "http",
-            "GET",
-            "https://example.com",
-            "-k",
-        ]);
+        let args_insecure =
+            CommandLineArgs::parse_from(&["http", "GET", "https://example.com", "-k"]);
         assert_eq!(args_insecure.insecure(), Some(true));
 
         // Test without insecure flag
-        let args_secure = CommandLineArgs::parse_from(&[
-            "http",
-            "GET",
-            "https://example.com",
-        ]);
+        let args_secure = CommandLineArgs::parse_from(&["http", "GET", "https://example.com"]);
         assert_eq!(args_secure.insecure(), None);
     }
 

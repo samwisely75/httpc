@@ -137,11 +137,9 @@ mod test {
     #[test]
     fn test_decode_bytes_with_case_insensitive_encoding() {
         let data = "test data".as_bytes();
-        
+
         let test_cases = vec![
-            "GZIP", "Gzip", "gZiP",
-            "DEFLATE", "Deflate", "dEfLaTe",
-            "ZSTD", "Zstd", "zStD",
+            "GZIP", "Gzip", "gZiP", "DEFLATE", "Deflate", "dEfLaTe", "ZSTD", "Zstd", "zStD",
         ];
 
         for encoding in test_cases {
@@ -187,7 +185,7 @@ mod test {
     fn test_decode_bytes_with_whitespace_in_encoding() {
         let data = "test data".as_bytes();
         let encodings = vec![" gzip ", "\tdeflate\t", "\ngzip\n"];
-        
+
         for encoding in encodings {
             let result = decode_bytes(data, encoding);
             // Should handle whitespace gracefully
@@ -208,7 +206,7 @@ mod test {
         // Test with invalid UTF-8 bytes
         let invalid_utf8 = vec![0xFF, 0xFE, 0xFD];
         let result = decode_bytes(&invalid_utf8, ENC_NONE);
-        
+
         // Should either succeed with replacement characters or fail gracefully
         match result {
             Ok(s) => {
@@ -223,7 +221,7 @@ mod test {
 
     #[test]
     fn test_successful_compression_roundtrip() {
-        use flate2::write::{GzEncoder, DeflateEncoder};
+        use flate2::write::{DeflateEncoder, GzEncoder};
         use std::io::Write;
 
         let original_data = "Hello, World! This is a test string for compression.";
@@ -233,7 +231,7 @@ mod test {
             let mut encoder = GzEncoder::new(Vec::new(), flate2::Compression::default());
             encoder.write_all(original_data.as_bytes()).unwrap();
             let compressed = encoder.finish().unwrap();
-            
+
             let decompressed = decode_gzip(&compressed).unwrap();
             let result_string = String::from_utf8(decompressed.to_vec()).unwrap();
             assert_eq!(result_string, original_data);
@@ -244,7 +242,7 @@ mod test {
             let mut encoder = DeflateEncoder::new(Vec::new(), flate2::Compression::default());
             encoder.write_all(original_data.as_bytes()).unwrap();
             let compressed = encoder.finish().unwrap();
-            
+
             let decompressed = decode_deflate(&compressed).unwrap();
             let result_string = String::from_utf8(decompressed.to_vec()).unwrap();
             assert_eq!(result_string, original_data);

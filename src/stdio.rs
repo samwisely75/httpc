@@ -268,6 +268,9 @@ mod tests {
         };
 
         assert_eq!(args.headers(), &headers);
-        assert_eq!(args.headers().get("content-type"), Some(&"application/json".to_string()));
+        assert_eq!(
+            args.headers().get("content-type"),
+            Some(&"application/json".to_string())
+        );
     }
 }

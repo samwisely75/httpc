@@ -138,13 +138,13 @@ impl IniProfileStore {
         }
 
         fn try_get_bool(section: &Properties, key: &str) -> Option<bool> {
-            section.get(key).and_then(|s| {
-                match s.to_lowercase().as_str() {
+            section
+                .get(key)
+                .and_then(|s| match s.to_lowercase().as_str() {
                     "true" => Some(true),
                     "false" => Some(false),
                     _ => None,
-                }
-            })
+                })
         }
 
         let profile = IniProfile {
@@ -484,10 +484,10 @@ mod test {
     fn test_profile_not_found() -> Result<()> {
         let temp_file = create_ini_file()?;
         let path = temp_file.as_os_str().to_str().unwrap().to_string();
-        
+
         let ini_store = IniProfileStore::new(&path);
         let result = ini_store.get_profile("nonexistent")?;
-        
+
         assert!(result.is_none());
         temp_file.close()?;
         Ok(())
@@ -496,15 +496,15 @@ mod test {
     #[test]
     fn test_malformed_ini_file() -> Result<()> {
         let malformed_content = "invalid ini content\nno sections\nno equals signs";
-        
+
         let mut file = NamedTempFile::new()?;
         file.write_all(malformed_content.as_bytes())?;
         let path = file.path().to_str().unwrap().to_string();
-        
+
         let ini_store = IniProfileStore::new(&path);
         // Should handle malformed files gracefully
         let result = ini_store.get_profile("default");
-        
+
         // The result might be an error or None, depending on implementation
         match result {
             Ok(profile) => assert!(profile.is_none()),
@@ -512,7 +512,7 @@ mod test {
                 // Error is acceptable for malformed files
             }
         }
-        
+
         Ok(())
     }
 
@@ -521,10 +521,10 @@ mod test {
         let mut file = NamedTempFile::new()?;
         file.write_all(b"")?;
         let path = file.path().to_str().unwrap().to_string();
-        
+
         let ini_store = IniProfileStore::new(&path);
         let result = ini_store.get_profile("default")?;
-        
+
         assert!(result.is_none());
         Ok(())
     }
@@ -619,7 +619,7 @@ mod test {
     #[test]
     fn test_blank_profile() {
         let profile = get_blank_profile();
-        
+
         assert!(profile.server().is_none());
         assert!(profile.user().is_none());
         assert!(profile.password().is_none());
@@ -638,20 +638,21 @@ mod test {
              [profile2]\n\
              host=https://server2.com\n\
              user=user2\n\
-             ".to_string();
+             "
+        .to_string();
 
         let mut file = NamedTempFile::new()?;
         file.write_all(content.as_bytes())?;
         let path = file.path().to_str().unwrap().to_string();
 
         let ini_store = IniProfileStore::new(&path);
-        
+
         let profile1 = ini_store.get_profile("profile1")?.unwrap();
         let profile2 = ini_store.get_profile("profile2")?.unwrap();
 
         assert_eq!(profile1.server().unwrap().host(), "server1.com");
         assert_eq!(profile1.user(), Some(&"user1".to_string()));
-        
+
         assert_eq!(profile2.server().unwrap().host(), "server2.com");
         assert_eq!(profile2.user(), Some(&"user2".to_string()));
 
@@ -678,7 +679,10 @@ mod test {
 
         assert_eq!(profile.user(), Some(&"user@domain.com".to_string()));
         assert_eq!(profile.password(), Some(&"p@ss!w0rd#123".to_string()));
-        assert_eq!(profile.headers().get("custom-header"), Some(&"value-with-dashes".to_string()));
+        assert_eq!(
+            profile.headers().get("custom-header"),
+            Some(&"value-with-dashes".to_string())
+        );
 
         Ok(())
     }

@@ -469,8 +469,7 @@ mod tests {
 
     #[test]
     fn test_build_request_with_auth() {
-        let profile = MockProfile::new()
-            .with_auth("testuser".to_string(), "testpass".to_string());
+        let profile = MockProfile::new().with_auth("testuser".to_string(), "testpass".to_string());
         let client = HttpClient::new(&profile);
         let request_args = MockRequest::new();
 
@@ -514,9 +513,18 @@ mod tests {
         let client = HttpClient::new(&profile);
 
         let mut headers = HashMap::new();
-        headers.insert("content-type".to_string(), "application/json; charset=utf-8".to_string());
-        headers.insert("accept-encoding".to_string(), "gzip, deflate, br".to_string());
-        headers.insert("x-custom-header".to_string(), "custom-value-with-special-chars!@#$".to_string());
+        headers.insert(
+            "content-type".to_string(),
+            "application/json; charset=utf-8".to_string(),
+        );
+        headers.insert(
+            "accept-encoding".to_string(),
+            "gzip, deflate, br".to_string(),
+        );
+        headers.insert(
+            "x-custom-header".to_string(),
+            "custom-value-with-special-chars!@#$".to_string(),
+        );
 
         let request_args = MockRequest::new().with_headers(headers);
         let request = client.build_request(&request_args);
@@ -557,7 +565,11 @@ mod tests {
         // Test different URL paths
         let test_cases = vec![
             ("/api/v1/users", None, "https://httpbin.org/api/v1/users"),
-            ("/search", Some("q=rust".to_string()), "https://httpbin.org/search?q=rust"),
+            (
+                "/search",
+                Some("q=rust".to_string()),
+                "https://httpbin.org/search?q=rust",
+            ),
             ("", None, "https://httpbin.org/"),
         ];
 
@@ -578,7 +590,10 @@ mod tests {
             (StatusCode::UNAUTHORIZED, "401 Unauthorized"),
             (StatusCode::FORBIDDEN, "403 Forbidden"),
             (StatusCode::NOT_FOUND, "404 Not Found"),
-            (StatusCode::INTERNAL_SERVER_ERROR, "500 Internal Server Error"),
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "500 Internal Server Error",
+            ),
         ];
 
         for (status, expected_body) in error_responses {

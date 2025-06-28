@@ -141,12 +141,12 @@ fn test_custom_headers() {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
-    
+
     // Check if we got a successful response (200 OK) in stdout
     // or an HTTP error in stderr (both indicate the request was made)
     let has_successful_response = stdout.contains("httpbin.org");
     let has_http_error = stderr.contains("400") || stderr.contains("401") || stderr.contains("500");
-    
+
     assert!(
         has_successful_response || has_http_error,
         "Expected either successful response in stdout or HTTP error in stderr.\nStdout: {}\nStderr: {}",
@@ -206,7 +206,7 @@ fn test_verbose_mode() {
 #[test]
 fn test_different_http_methods() {
     let methods = ["GET", "POST", "PUT", "DELETE", "HEAD"];
-    
+
     for method in &methods {
         let output = Command::new(webly_binary())
             .args(&[method, "https://httpbin.org/get"])
@@ -335,9 +335,12 @@ fn test_multiple_headers() {
         .args(&[
             "GET",
             "https://httpbin.org/get",
-            "-H", "X-Custom-Header-1: value1",
-            "-H", "X-Custom-Header-2: value2",
-            "-H", "Accept: application/json",
+            "-H",
+            "X-Custom-Header-1: value1",
+            "-H",
+            "X-Custom-Header-2: value2",
+            "-H",
+            "Accept: application/json",
         ])
         .output()
         .expect("Failed to execute webly");
@@ -355,7 +358,8 @@ fn test_auth_without_password() {
         .args(&[
             "GET",
             "https://httpbin.org/get",
-            "--user", "testuser",
+            "--user",
+            "testuser",
             // No password provided
         ])
         .output()
@@ -374,7 +378,7 @@ fn test_auth_without_password() {
 fn test_very_long_url() {
     let long_path = "/".to_string() + &"very-long-path-segment/".repeat(50);
     let long_url = format!("https://httpbin.org{}", long_path);
-    
+
     let output = Command::new(webly_binary())
         .args(&["GET", &long_url])
         .output()
@@ -394,7 +398,8 @@ fn test_special_characters_in_headers() {
         .args(&[
             "GET",
             "https://httpbin.org/get",
-            "-H", "X-Special-Chars: !@#$%^&*()_+-={}[]|\\:;\"'<>?,./",
+            "-H",
+            "X-Special-Chars: !@#$%^&*()_+-={}[]|\\:;\"'<>?,./",
         ])
         .output()
         .expect("Failed to execute webly");
@@ -410,7 +415,7 @@ fn test_special_characters_in_headers() {
 #[test]
 fn test_case_insensitive_method() {
     let methods = ["get", "post", "PUT", "Delete", "HEAD"];
-    
+
     for method in &methods {
         let output = Command::new(webly_binary())
             .args(&[method, "https://httpbin.org/get"])
