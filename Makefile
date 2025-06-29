@@ -1,4 +1,4 @@
-.PHONY: help build test clean lint fmt check install release docker
+.PHONY: help build test clean lint fmt check install release
 
 # Default target
 help: ## Show this help message
@@ -35,13 +35,6 @@ install: ## Install the binary locally
 
 release: ## Build release version
 	cargo build --release
-
-# Docker tasks
-docker-build: ## Build Docker image
-	docker build -t webly:latest .
-
-docker-run: ## Run Docker container
-	docker run --rm -it webly:latest --help
 
 # Documentation
 docs: ## Generate documentation

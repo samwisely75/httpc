@@ -13,7 +13,7 @@
 
 ### 2. Release Workflow Optimization (.github/workflows/release.yml)
 - **Added conditional execution**: Most expensive jobs only run on actual release tags (`startsWith(github.ref, 'refs/tags/v')`)
-- **Reduced Docker builds**: From multi-arch (linux/amd64,linux/arm64) to single arch (linux/amd64)
+- **Streamlined release artifacts**: Focused on essential binaries and Linux packages
 - **Removed crates.io publishing**: Temporarily disabled until needed
 - **Cost reduction**: ~80% reduction - expensive jobs only run on releases, not on every commit
 
@@ -46,7 +46,7 @@
 When you create a release tag (e.g., `git tag v0.1.8 && git push --tags`):
 - All platforms (Linux, macOS) get built
 - All package formats (.deb, .rpm) get created
-- Docker images get built and pushed
+- Release assets get uploaded to GitHub
 - Comprehensive installation and functionality tests run
 - Release assets get uploaded to GitHub
 

@@ -46,7 +46,6 @@ Once secrets are configured, releases are fully automated:
    - 🔨 Build binaries and packages
    - 🧪 Test package installations
    - 📦 Publish to crates.io
-   - 🐳 Push Docker image
    - 🍺 Update Homebrew formula
    - 📋 Create GitHub release
 
@@ -56,8 +55,6 @@ After a successful release, verify:
 
 - [ ] New version appears on [crates.io](https://crates.io/crates/webly)
 - [ ] GitHub release created with all assets
-- [ ] Docker image pushed to registry
-- [ ] Homebrew formula updated (if applicable)
 - [ ] Installation works: `cargo install webly`
 
 ## Troubleshooting
