@@ -26,7 +26,7 @@ if not exist "%PROFILES_FILE%" (
         echo [httpbin]
         echo host = https://httpbin.org
         echo @content-type = application/json
-        echo @user-agent = webly/0.1.6
+        echo @user-agent = webly/0.1.7
         echo.
         echo [jsonplaceholder]
         echo host = https://jsonplaceholder.typicode.com

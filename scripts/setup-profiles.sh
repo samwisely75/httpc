@@ -26,7 +26,7 @@ if [ ! -f "$PROFILES_FILE" ]; then
 [httpbin]
 host = https://httpbin.org
 @content-type = application/json
-@user-agent = webly/0.1.6
+@user-agent = webly/0.1.7
 
 [jsonplaceholder]
 host = https://jsonplaceholder.typicode.com
