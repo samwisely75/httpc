@@ -54,5 +54,5 @@ if not exist "%PROFILES_FILE%" (
 )
 
 echo Webly setup complete!
-echo See documentation: https://github.com/blueeaglesam/webly
+echo See documentation: https://github.com/elasticsatch/webly
 pause

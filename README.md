@@ -1,7 +1,7 @@
 # webly
 
-[![CI](https://github.com/blueeaglesam/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/blueeaglesam/webly/actions/workflows/ci.yml)
-[![Release](https://github.com/blueeaglesam/webly/actions/workflows/release.yml/badge.svg)](https://github.com/blueeaglesam/webly/actions/workflows/release.yml)
+[![CI](https://github.com/elasticsatch/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/elasticsatch/webly/actions/workflows/ci.yml)
+[![Release](https://github.com/elasticsatch/webly/actions/workflows/release.yml/badge.svg)](https://github.com/elasticsatch/webly/actions/workflows/release.yml)
 [![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
 [![License](https://img.shields.io/badge/license-Elastic%20License%202.0-blue.svg)](LICENSE)
 [![Downloads](https://img.shields.io/crates/d/webly.svg)](https://crates.io/crates/webly)
@@ -37,24 +37,24 @@ Plus all the HTTP client features you expect:
 
 ## Installation
 
-Download the appropriate binary from [releases](https://github.com/blueeaglesam/webly/releases) for your platform:
+Download the appropriate binary from [releases](https://github.com/elasticsatch/webly/releases) for your platform:
 
 **macOS (Homebrew):**
 
 ```bash
 # Install via Homebrew (easiest method for macOS)
-brew install blueeaglesam/tap/webly
+brew install elasticsatch/tap/webly
 ```
 
 **Linux/macOS (Manual):**
 
 ```bash
 # Download and extract
-curl -L https://github.com/blueeaglesam/webly/releases/latest/download/webly-linux-x64.tar.gz | tar -xz
+curl -L https://github.com/elasticsatch/webly/releases/latest/download/webly-linux-x64.tar.gz | tar -xz
 sudo mv webly /usr/local/bin/
 
 # Or for macOS
-curl -L https://github.com/blueeaglesam/webly/releases/latest/download/webly-macos-x64.tar.gz | tar -xz
+curl -L https://github.com/elasticsatch/webly/releases/latest/download/webly-macos-x64.tar.gz | tar -xz
 sudo mv webly /usr/local/bin/
 ```
 
@@ -63,7 +63,7 @@ sudo mv webly /usr/local/bin/
 ```powershell
 # Download and install the MSI package from releases
 # This will automatically add webly to your PATH
-# Download webly-VERSION-x64.msi from https://github.com/blueeaglesam/webly/releases
+# Download webly-VERSION-x64.msi from https://github.com/elasticsatch/webly/releases
 ```
 
 **From crates.io (requires Rust):**
@@ -75,7 +75,7 @@ cargo install webly
 **Build from source:**
 
 ```bash
-git clone https://github.com/blueeaglesam/webly.git
+git clone https://github.com/elasticsatch/webly.git
 cd webly
 cargo build --release
 sudo cp target/release/webly /usr/local/bin/  # Linux/macOS
