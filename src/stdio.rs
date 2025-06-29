@@ -4,7 +4,7 @@ use crate::http::HttpRequestArgs;
 use crate::url::UrlPath;
 use crate::utils::Result;
 use std::collections::HashMap;
-use std::io::{Read, Stdin};
+use std::io::{IsTerminal, Read, Stdin};
 use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,7 +16,7 @@ pub struct StdinArgs {
 #[allow(dead_code)]
 impl StdinArgs {
     pub fn new(i: &mut Stdin) -> Result<Self> {
-        if atty::is(atty::Stream::Stdin) {
+        if std::io::stdin().is_terminal() {
             return Ok(Self {
                 input: None,
                 headers: HashMap::new(),
@@ -111,7 +111,7 @@ mod tests {
 
         if let Ok(args) = result {
             // If we're in a TTY, input should be None
-            if atty::is(atty::Stream::Stdin) {
+            if std::io::stdin().is_terminal() {
                 assert_eq!(args.input, None);
                 assert!(args.headers.is_empty());
             }

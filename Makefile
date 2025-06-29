@@ -39,6 +39,13 @@ fmt-check: ## Check code formatting
 
 check: fmt-check lint test ## Run all checks (format, lint, test)
 
+# Security
+security-check: ## Run security audits and vulnerability checks
+	@echo "🔒 Running security checks..."
+	@cargo audit
+	@cargo deny check
+	@echo "✅ Security checks completed!"
+
 # Installation and release
 install: ## Install the binary locally
 	cargo install --path .
