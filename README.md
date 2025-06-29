@@ -1,5 +1,7 @@
 # webly
 
+> **Note**: This is a personal project by Satoshi Iizuka and is not affiliated with or endorsed by Elastic N.V. or any of its subsidiaries.
+
 [![CI](https://github.com/elasticsatch/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/elasticsatch/webly/actions/workflows/ci.yml)
 [![Release](https://github.com/elasticsatch/webly/actions/workflows/release.yml/badge.svg)](https://github.com/elasticsatch/webly/actions/workflows/release.yml)
 [![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
