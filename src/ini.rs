@@ -167,15 +167,15 @@ impl IniProfileStore {
         let profile = IniProfile {
             name: name.to_string(),
             server: try_get::<Endpoint>(section, INI_HOST)
-                .with_context(|| format!("Failed to parse host for profile '{}'", name))?,
+                .with_context(|| format!("Failed to parse host for profile '{name}'"))?,
             user: try_get(section, INI_USER)?,
             password: try_get(section, INI_PASSWORD)?,
             insecure: try_get_bool(section, INI_INSECURE)
-                .with_context(|| format!("Failed to parse insecure flag for profile '{}'", name))?,
+                .with_context(|| format!("Failed to parse insecure flag for profile '{name}'"))?,
             ca_cert: try_get(section, INI_CA_CERT)?,
             headers: headers.clone(),
             proxy: try_get::<Endpoint>(section, INI_PROXY)
-                .with_context(|| format!("Failed to parse proxy for profile '{}'", name))?,
+                .with_context(|| format!("Failed to parse proxy for profile '{name}'"))?,
         };
 
         Ok(Some(profile))
@@ -265,10 +265,7 @@ pub fn ask_new_profile(name: &str, i: &std::io::Stdin) -> Result<Option<IniProfi
     };
 
     let parsed_port = port.parse::<u16>().with_context(|| {
-        format!(
-            "Invalid port number '{}'. Port must be between 1 and 65535",
-            port
-        )
+        format!("Invalid port number '{port}'. Port must be between 1 and 65535")
     })?;
 
     Ok(Some(IniProfile {

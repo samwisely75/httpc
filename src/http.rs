@@ -132,7 +132,7 @@ impl HttpClient {
         let default_method = DEFAULT_METHOD.to_string();
         let method_str = args.method().unwrap_or(&default_method);
         let method = Method::from_bytes(method_str.as_bytes())
-            .with_context(|| format!("Invalid HTTP method '{}'", method_str))?;
+            .with_context(|| format!("Invalid HTTP method '{method_str}'"))?;
         let url = Url::new(Some(&self.endpoint), args.url_path()).to_string();
 
         let mut req_builder = self.client.request(method, url);
@@ -148,9 +148,9 @@ impl HttpClient {
         // Add headers from request arguments
         for (key, value) in args.headers() {
             let header_name = HeaderName::from_bytes(key.as_bytes())
-                .with_context(|| format!("Invalid header name '{}'", key))?;
+                .with_context(|| format!("Invalid header name '{key}'"))?;
             let header_value = HeaderValue::from_str(value.as_str()).with_context(|| {
-                format!("Invalid header value '{}' for header '{}'", value, key)
+                format!("Invalid header value '{value}' for header '{key}'")
             })?;
             req_builder = req_builder.header(header_name, header_value);
         }
@@ -169,9 +169,9 @@ impl HttpClient {
         if let Some(ca_cert) = profile.ca_cert() {
             let ca_cert = shellexpand::tilde(&ca_cert).to_string();
             let cert_data = std::fs::read(&ca_cert)
-                .with_context(|| format!("Failed to read CA certificate file '{}'", ca_cert))?;
+                .with_context(|| format!("Failed to read CA certificate file '{ca_cert}'"))?;
             let cert = Certificate::from_pem(&cert_data)
-                .with_context(|| format!("Failed to parse CA certificate from '{}'", ca_cert))?;
+                .with_context(|| format!("Failed to parse CA certificate from '{ca_cert}'"))?;
             cli_builder = cli_builder.use_rustls_tls().add_root_certificate(cert);
         }
 
@@ -180,9 +180,9 @@ impl HttpClient {
             let mut headers = HeaderMap::new();
             for (key, value) in profile.headers() {
                 let header_name = HeaderName::from_bytes(key.as_bytes())
-                    .with_context(|| format!("Invalid header name '{}'", key))?;
+                    .with_context(|| format!("Invalid header name '{key}'"))?;
                 let header_value = HeaderValue::from_str(value.as_str()).with_context(|| {
-                    format!("Invalid header value '{}' for header '{}'", value, key)
+                    format!("Invalid header value '{value}' for header '{key}'")
                 })?;
                 headers.insert(header_name, header_value);
             }
@@ -193,7 +193,7 @@ impl HttpClient {
         if let Some(proxy) = profile.proxy() {
             let proxy_url = proxy.to_string();
             let proxy = reqwest::Proxy::all(&proxy_url)
-                .with_context(|| format!("Failed to configure proxy '{}'", proxy_url))?;
+                .with_context(|| format!("Failed to configure proxy '{proxy_url}'"))?;
             cli_builder = cli_builder.proxy(proxy);
         }
 
