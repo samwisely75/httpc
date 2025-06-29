@@ -705,19 +705,17 @@ mod test {
 
     #[test]
     fn test_case_insensitive_boolean_parsing() -> Result<()> {
-        let test_cases = vec![
+        // Test valid boolean values that should succeed
+        let valid_cases = vec![
             ("true", Some(true)),
             ("TRUE", Some(true)),
             ("True", Some(true)),
             ("false", Some(false)),
             ("FALSE", Some(false)),
             ("False", Some(false)),
-            ("invalid", None),
-            ("1", None),
-            ("0", None),
         ];
 
-        for (input, expected) in test_cases {
+        for (input, expected) in valid_cases {
             let content = format!(
                 "[{DEFAULT_INI_SECTION}]\n\
                  host=https://example.com\n\
@@ -732,6 +730,26 @@ mod test {
             let profile = ini_store.get_profile(DEFAULT_INI_SECTION)?.unwrap();
 
             assert_eq!(profile.insecure(), expected, "Failed for input: {input}");
+        }
+
+        // Test invalid boolean values that should fail
+        let invalid_cases = vec!["invalid", "1", "0", "yes", "no", "on", "off"];
+
+        for input in invalid_cases {
+            let content = format!(
+                "[{DEFAULT_INI_SECTION}]\n\
+                 host=https://example.com\n\
+                 insecure={input}\n"
+            );
+
+            let mut file = NamedTempFile::new()?;
+            file.write_all(content.as_bytes())?;
+            let path = file.path().to_str().unwrap().to_string();
+
+            let ini_store = IniProfileStore::new(&path);
+            let result = ini_store.get_profile(DEFAULT_INI_SECTION);
+
+            assert!(result.is_err(), "Expected error for invalid input: {input}");
         }
 
         Ok(())

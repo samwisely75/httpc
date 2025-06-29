@@ -359,7 +359,7 @@ mod tests {
     #[test]
     fn test_http_client_with_auth() {
         let profile = MockProfile::new().with_auth("testuser".to_string(), "testpass".to_string());
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
 
         assert_eq!(client.user, Some("testuser".to_string()));
         assert_eq!(client.password, Some("testpass".to_string()));
@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn test_build_request_get() {
         let profile = MockProfile::new();
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
         let request_args = MockRequest::new();
 
         let request = client.build_request(&request_args).unwrap();
@@ -380,7 +380,7 @@ mod tests {
     #[test]
     fn test_build_request_post_with_body() {
         let profile = MockProfile::new();
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
         let request_args = MockRequest::new()
             .with_method("POST")
             .with_body("{\"test\": \"data\"}");
@@ -398,7 +398,7 @@ mod tests {
         headers.insert("authorization".to_string(), "Bearer token123".to_string());
 
         let profile = MockProfile::new().with_headers(headers.clone());
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
         let request_args = MockRequest::new().with_headers(headers);
 
         let request = client.build_request(&request_args).unwrap();
@@ -464,7 +464,7 @@ mod tests {
     fn test_build_client_with_insecure() {
         let profile = MockProfile::new().with_insecure(true);
 
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
 
         // We can't easily test the internal client configuration,
         // but we can verify the client was created successfully
@@ -477,7 +477,7 @@ mod tests {
         let proxy_endpoint = Endpoint::parse("http://proxy.example.com:8080").unwrap();
         let profile = MockProfile::new().with_proxy(proxy_endpoint);
 
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
 
         // Verify client creation succeeds with proxy configuration
         assert_eq!(client.endpoint.host(), "httpbin.org");
@@ -486,7 +486,7 @@ mod tests {
     #[test]
     fn test_build_request_with_auth() {
         let profile = MockProfile::new().with_auth("testuser".to_string(), "testpass".to_string());
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
         let request_args = MockRequest::new();
 
         let request = client.build_request(&request_args).unwrap();
@@ -498,7 +498,7 @@ mod tests {
     #[test]
     fn test_build_request_different_methods() {
         let profile = MockProfile::new();
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
 
         let methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"];
 
@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn test_build_request_with_empty_body() {
         let profile = MockProfile::new();
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
         let request_args = MockRequest::new().with_body("");
 
         let request = client.build_request(&request_args).unwrap();
@@ -526,7 +526,7 @@ mod tests {
     #[test]
     fn test_build_request_complex_headers() {
         let profile = MockProfile::new();
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
 
         let mut headers = HashMap::new();
         headers.insert(
@@ -567,7 +567,7 @@ mod tests {
     #[test]
     fn test_http_client_debug() {
         let profile = MockProfile::new();
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
 
         let debug_string = format!("{client:?}");
         assert!(debug_string.contains("HttpClient"));
@@ -576,7 +576,7 @@ mod tests {
     #[test]
     fn test_build_request_url_construction() {
         let profile = MockProfile::new();
-        let client = HttpClient::new(&profile);
+        let client = HttpClient::new(&profile).unwrap();
 
         // Test different URL paths
         let test_cases = vec![
