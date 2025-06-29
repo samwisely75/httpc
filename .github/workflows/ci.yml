@@ -57,10 +57,6 @@ jobs:
     - name: Run tests
       run: cargo test --verbose --all-features
 
-    - name: Run doctests
-      run: cargo test --doc
-      continue-on-error: true  # Skip doctests for binary-only crates
-
     - name: Test with minimal dependencies
       if: matrix.rust == 'stable' && matrix.os == 'ubuntu-latest'
       run: cargo test --no-default-features
