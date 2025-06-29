@@ -2,11 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ develop ]
     tags-ignore:
       - 'v*'
   pull_request:
-    branches: [ main, develop ]
+    branches: [ develop ]
 
 env:
   CARGO_TERM_COLOR: always
