@@ -2,10 +2,7 @@
 FROM rust:1.83-alpine AS builder
 
 # Install build dependencies
-RUN apk add --no-cache musl-dev
-
-# Add musl target for cross-compilation
-RUN rustup target add x86_64-unknown-linux-musl
+RUN apk add --no-cache musl-dev gcc
 
 # Set working directory
 WORKDIR /app
@@ -16,8 +13,8 @@ COPY Cargo.toml Cargo.lock ./
 # Copy source code
 COPY src ./src
 
-# Build the application
-RUN cargo build --release --target x86_64-unknown-linux-musl
+# Build the application (use native architecture)
+RUN cargo build --release
 
 # Runtime stage
 FROM alpine:3.19
@@ -30,7 +27,7 @@ RUN addgroup -g 1000 webly && \
     adduser -D -s /bin/sh -u 1000 -G webly webly
 
 # Copy the binary from builder stage
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/webly /usr/local/bin/webly
+COPY --from=builder /app/target/release/webly /usr/local/bin/webly
 
 # Set the user
 USER webly
