@@ -19,7 +19,7 @@ extended-description = "A fast, modern HTTP client with profile-based configurat
 depends = "$auto"
 section = "net"
 priority = "optional"
-maintainer-scripts = "debian/"
+post-install-script = "scripts/deb-postinstall.sh"
 assets = [
     ["target/release/webly", "usr/bin/", "755"],
     ["README.md", "usr/share/doc/webly/", "644"],
