@@ -77,7 +77,9 @@ impl HttpClient {
             client,
             endpoint: args
                 .server()
-                .ok_or_else(|| anyhow::anyhow!("Endpoint cannot be empty when building HttpClient"))?
+                .ok_or_else(|| {
+                    anyhow::anyhow!("Endpoint cannot be empty when building HttpClient")
+                })?
                 .clone(),
             user: args.user().cloned(),
             password: args.password().cloned(),
@@ -86,10 +88,14 @@ impl HttpClient {
 
     pub async fn request(&self, args: &impl HttpRequestArgs) -> Result<HttpResponse> {
         // Build a request
-        let req = self.build_request(args)
+        let req = self
+            .build_request(args)
             .context("Failed to build HTTP request")?;
         // contact the server and receive the response
-        let res = self.client.execute(req).await
+        let res = self
+            .client
+            .execute(req)
+            .await
             .context("Failed to execute HTTP request")?;
 
         // Acquire the response status and headers
@@ -143,13 +149,13 @@ impl HttpClient {
         for (key, value) in args.headers() {
             let header_name = HeaderName::from_bytes(key.as_bytes())
                 .with_context(|| format!("Invalid header name '{}'", key))?;
-            let header_value = HeaderValue::from_str(value.as_str())
-                .with_context(|| format!("Invalid header value '{}' for header '{}'", value, key))?;
+            let header_value = HeaderValue::from_str(value.as_str()).with_context(|| {
+                format!("Invalid header value '{}' for header '{}'", value, key)
+            })?;
             req_builder = req_builder.header(header_name, header_value);
         }
 
-        req_builder.build()
-            .context("Failed to build HTTP request")
+        req_builder.build().context("Failed to build HTTP request")
     }
 
     fn build_client(profile: &impl HttpConnectionProfile) -> Result<Client> {
@@ -175,8 +181,9 @@ impl HttpClient {
             for (key, value) in profile.headers() {
                 let header_name = HeaderName::from_bytes(key.as_bytes())
                     .with_context(|| format!("Invalid header name '{}'", key))?;
-                let header_value = HeaderValue::from_str(value.as_str())
-                    .with_context(|| format!("Invalid header value '{}' for header '{}'", value, key))?;
+                let header_value = HeaderValue::from_str(value.as_str()).with_context(|| {
+                    format!("Invalid header value '{}' for header '{}'", value, key)
+                })?;
                 headers.insert(header_name, header_value);
             }
             cli_builder = cli_builder.default_headers(headers);
@@ -190,8 +197,7 @@ impl HttpClient {
             cli_builder = cli_builder.proxy(proxy);
         }
 
-        cli_builder.build()
-            .context("Failed to build HTTP client")
+        cli_builder.build().context("Failed to build HTTP client")
     }
 }
 
@@ -342,7 +348,8 @@ mod tests {
 
     #[test]
     fn test_http_client_creation() {
-        let profile = MockProfile::new();        let client = HttpClient::new(&profile).unwrap();
+        let profile = MockProfile::new();
+        let client = HttpClient::new(&profile).unwrap();
         assert_eq!(client.endpoint.scheme(), Some(&"https".to_string()));
         assert_eq!(client.endpoint.host(), "httpbin.org");
         assert!(client.user.is_none());

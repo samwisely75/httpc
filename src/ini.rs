@@ -110,8 +110,12 @@ impl IniProfileStore {
         }
 
         let ini = if std::path::Path::new(&self.file_path).exists() {
-            Ini::load_from_file(&self.file_path)
-                .with_context(|| format!("Failed to load profile configuration from '{}'", self.file_path))?
+            Ini::load_from_file(&self.file_path).with_context(|| {
+                format!(
+                    "Failed to load profile configuration from '{}'",
+                    self.file_path
+                )
+            })?
         } else {
             return Ok(None);
         };
@@ -150,7 +154,11 @@ impl IniProfileStore {
                 Some(s) => match s.to_lowercase().as_str() {
                     "true" => Ok(Some(true)),
                     "false" => Ok(Some(false)),
-                    _ => Err(anyhow!("Invalid boolean value '{}' for '{}'. Expected 'true' or 'false'", s, key)),
+                    _ => Err(anyhow!(
+                        "Invalid boolean value '{}' for '{}'. Expected 'true' or 'false'",
+                        s,
+                        key
+                    )),
                 },
                 None => Ok(None),
             }
@@ -197,8 +205,12 @@ impl IniProfileStore {
             section.set(format!("@{k}"), v);
         }
 
-        ini.write_to_file(&self.file_path)
-            .with_context(|| format!("Failed to write profile '{}' to '{}'", profile.name, self.file_path))?;
+        ini.write_to_file(&self.file_path).with_context(|| {
+            format!(
+                "Failed to write profile '{}' to '{}'",
+                profile.name, self.file_path
+            )
+        })?;
 
         Ok(())
     }
@@ -252,8 +264,12 @@ pub fn ask_new_profile(name: &str, i: &std::io::Stdin) -> Result<Option<IniProfi
         None
     };
 
-    let parsed_port = port.parse::<u16>()
-        .with_context(|| format!("Invalid port number '{}'. Port must be between 1 and 65535", port))?;
+    let parsed_port = port.parse::<u16>().with_context(|| {
+        format!(
+            "Invalid port number '{}'. Port must be between 1 and 65535",
+            port
+        )
+    })?;
 
     Ok(Some(IniProfile {
         name: name.to_string(),

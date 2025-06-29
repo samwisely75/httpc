@@ -49,7 +49,10 @@ pub fn decode_bytes(data: &[u8], encoding: &str) -> Result<String> {
         Err(utf8e) => {
             let (r, _, sjis_error) = SHIFT_JIS.decode(&body_bytes);
             if sjis_error {
-                return Err(anyhow::anyhow!("Failed to decode body with utf8/shift-jis: {}", utf8e));
+                return Err(anyhow::anyhow!(
+                    "Failed to decode body with utf8/shift-jis: {}",
+                    utf8e
+                ));
             }
             r.to_string()
         }
