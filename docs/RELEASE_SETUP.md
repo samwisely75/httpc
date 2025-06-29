@@ -40,7 +40,7 @@ Once secrets are configured, releases are fully automated:
 
 1. **Create a release tag**: `git tag v0.1.7 && git push origin v0.1.7`
 2. **Automated pipeline runs**:
-   - ✅ CI checks (Linux, macOS, Windows)
+   - ✅ CI checks (Linux, macOS)
    - ✅ Security audit
    - ✅ Integration tests
    - 🔨 Build binaries and packages

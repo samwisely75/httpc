@@ -70,18 +70,3 @@ bytes = "1.10.1"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 
-[package.metadata.wix]
-upgrade-guid = "12345678-1234-1234-1234-123456789012"
-path-guid = "87654321-4321-4321-4321-210987654321"
-license = false
-eula = false
-
-# Include setup scripts as binary files (not WiX source files)
-[[package.metadata.wix.files]]
-source = "scripts/setup-profiles.ps1"
-destination = "[INSTALLDIR]setup-profiles.ps1"
-
-[[package.metadata.wix.files]]
-source = "scripts/setup-profiles.bat"
-destination = "[INSTALLDIR]setup-profiles.bat"
-

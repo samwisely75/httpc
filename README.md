@@ -58,14 +58,6 @@ curl -L https://github.com/elasticsatch/webly/releases/latest/download/webly-mac
 sudo mv webly /usr/local/bin/
 ```
 
-**Windows:**
-
-```powershell
-# Download and install the MSI package from releases
-# This will automatically add webly to your PATH
-# Download webly-VERSION-x64.msi from https://github.com/elasticsatch/webly/releases
-```
-
 **From crates.io (requires Rust):**
 
 ```bash
@@ -78,8 +70,7 @@ cargo install webly
 git clone https://github.com/elasticsatch/webly.git
 cd webly
 cargo build --release
-sudo cp target/release/webly /usr/local/bin/  # Linux/macOS
-# or copy target\release\webly.exe to PATH on Windows
+sudo cp target/release/webly /usr/local/bin/
 ```
 
 Test the installation: `webly --help`
@@ -90,7 +81,7 @@ No additional dependencies required - webly is a single, self-contained binary.
 
 ### Configuration File Location
 
-webly looks for configuration in `~/.webly/profiles` (on Unix/Linux/macOS) or `%USERPROFILE%\.webly\profiles` (on Windows).
+webly looks for configuration in `~/.webly/profiles`.
 
 ### Configuration Format
 
@@ -468,7 +459,7 @@ Python and Bash scripts work but become unwieldy and hard to maintain. Sometimes
 
 - **Single binary** - No runtime dependencies, easy deployment
 - **Performance** - Native speed, as fast as curl
-- **Cross-platform** - Works everywhere (Linux, macOS, Windows)
+- **Cross-platform** - Works on Linux and macOS
 - **Reliability** - Memory safety and robust error handling
 - **No compatibility hell** - Unlike Python scripts with version dependencies
 

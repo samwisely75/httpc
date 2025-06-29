@@ -161,11 +161,6 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             asset_name: webly-macos-arm64.tar.gz
-          
-          # Windows x64 (for .msi package)
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            asset_name: webly-windows-x64.zip
 
     steps:
     - name: Checkout code
@@ -195,8 +190,7 @@ jobs:
       run: |
         cargo build --release --target ${{ matrix.target }}
 
-    - name: Create archive (Unix)
-      if: matrix.os != 'windows-latest'
+    - name: Create archive
       run: |
         cd target/${{ matrix.target }}/release
         tar -czf ../../../${{ matrix.asset_name }} webly
@@ -206,14 +200,6 @@ jobs:
         else
           sha256sum ${{ matrix.asset_name }} > ${{ matrix.asset_name }}.sha256
         fi
-
-    - name: Create archive (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        cd target/${{ matrix.target }}/release
-        7z a ../../../${{ matrix.asset_name }} webly.exe
-        cd ../../../
-        Get-FileHash -Algorithm SHA256 ${{ matrix.asset_name }} | Format-List Hash | Out-String -Width 100 | ForEach-Object { $_.Split(' ')[3] + "  " + "${{ matrix.asset_name }}" } | Out-File -FilePath ${{ matrix.asset_name }}.sha256 -Encoding ascii
 
     - name: Upload Release Assets
       uses: softprops/action-gh-release@v2
@@ -482,9 +468,6 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             asset_name: webly-macos-arm64.tar.gz
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            asset_name: webly-windows-x64.zip
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -507,13 +490,8 @@ jobs:
 
     - name: Extract binary archive
       run: |
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          unzip ${{ matrix.asset_name }}
-          BINARY_PATH="./webly.exe"
-        else
-          tar -xzf ${{ matrix.asset_name }}
-          BINARY_PATH="./webly"
-        fi
+        tar -xzf ${{ matrix.asset_name }}
+        BINARY_PATH="./webly"
         
         # Make sure binary is executable
         chmod +x "$BINARY_PATH"
@@ -528,11 +506,7 @@ jobs:
 
     - name: Test binary functionality
       run: |
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          BINARY_PATH="./webly.exe"
-        else
-          BINARY_PATH="./webly"
-        fi
+        BINARY_PATH="./webly"
         
         # Test that help contains expected content
         if "$BINARY_PATH" --help | grep -q "HTTP"; then
@@ -556,13 +530,8 @@ jobs:
 
     - name: Test binary with profiles setup
       run: |
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          BINARY_PATH="./webly.exe"
-          TEST_HOME="/c/Users/runneradmin/webly-binary-test"
-        else
-          BINARY_PATH="./webly"
-          TEST_HOME="/tmp/webly-binary-test"
-        fi
+        BINARY_PATH="./webly"
+        TEST_HOME="/tmp/webly-binary-test"
         
         # Create test environment
         mkdir -p "$TEST_HOME/.webly"

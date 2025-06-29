@@ -3,7 +3,7 @@
 ## Changes Made to Reduce Costs
 
 ### 1. CI Workflow Optimization (.github/workflows/ci.yml)
-- **Reduced matrix builds**: From 3 OS platforms (Ubuntu, Windows, macOS) to Ubuntu only
+- **Reduced matrix builds**: From 3 OS platforms (Ubuntu, macOS) to Ubuntu only
 - **Removed expensive jobs**: 
   - Code coverage (cargo-tarpaulin)
   - Minimal versions checking
@@ -18,10 +18,8 @@
 - **Cost reduction**: ~80% reduction - expensive jobs only run on releases, not on every commit
 
 ### 3. Jobs That Only Run on Release Tags
-- `build` (multi-platform binary builds)
+- `build` (multi-platform binary builds for Linux and macOS)
 - `build-packages` (Linux .deb/.rpm packages)
-- `build-msi` (Windows MSI package)
-- `docker` (Docker image build and push)
 - `test-packages` (Package installation tests)
 - `test-binaries` (Binary functionality tests)
 
@@ -46,8 +44,8 @@
 ## What Still Gets Full Testing
 
 When you create a release tag (e.g., `git tag v0.1.8 && git push --tags`):
-- All platforms (Linux, macOS, Windows) get built
-- All package formats (.deb, .rpm, .msi) get created
+- All platforms (Linux, macOS) get built
+- All package formats (.deb, .rpm) get created
 - Docker images get built and pushed
 - Comprehensive installation and functionality tests run
 - Release assets get uploaded to GitHub
@@ -63,13 +61,13 @@ When you create a release tag (e.g., `git tag v0.1.8 && git push --tags`):
 
 If you need to re-enable full cross-platform testing on every commit:
 1. Remove the `if: startsWith(github.ref, 'refs/tags/v')` conditions from release.yml
-2. Restore the matrix strategy in ci.yml to include Windows and macOS
+2. Restore the matrix strategy in ci.yml to include macOS
 3. Re-add the coverage and complex integration test jobs
 
 ## Monitoring Costs
 
 - Check your GitHub Actions usage at: Settings → Billing → Plans and usage
 - GitHub provides 2,000 free minutes/month for private repos, 500 for public repos
-- After that: $0.008/minute for Ubuntu, $0.016 for Windows, $0.064 for macOS
+- After that: $0.008/minute for Ubuntu, $0.064 for macOS
 
 The optimizations should keep you well within free tier limits for normal development.
