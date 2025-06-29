@@ -753,3 +753,48 @@ jobs:
         # Cleanup
         rm -rf "$TEST_HOME"
       shell: bash
+
+  merge-to-main:
+    name: Merge successful release to main
+    runs-on: ubuntu-latest
+    needs: [create-release, build, build-packages, build-msi, docker]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Configure git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Merge release to main
+      run: |
+        # Get the commit hash of the current tag
+        TAG_COMMIT=$(git rev-list -n 1 ${{ github.ref_name }})
+        echo "Tag commit: $TAG_COMMIT"
+        
+        # Checkout main branch
+        git checkout main
+        git pull origin main
+        
+        # Merge the tagged commit into main
+        git merge $TAG_COMMIT --no-edit -m "Merge release ${{ github.ref_name }} into main"
+        
+        # Push changes to main
+        git push origin main
+
+    - name: Create develop merge commit
+      run: |
+        # Also merge back to develop to keep it in sync
+        git checkout develop
+        git pull origin develop
+        
+        # Merge main into develop to include any release-specific changes
+        git merge main --no-edit -m "Merge main back to develop after release ${{ github.ref_name }}"
+        
+        # Push changes to develop
+        git push origin develop
