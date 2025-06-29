@@ -4,9 +4,19 @@
 set -e
 
 echo "Setting up webly..."
-echo ""
-echo "To create an initial ~/.webly/profiles configuration, run:"
-echo "  /usr/share/webly/setup-profiles.sh"
-echo ""
-echo "Or create it manually and add your API profiles."
+
+# Run the setup script for all users who have a home directory
+# This will create ~/.webly/profiles if it doesn't exist
+if [ -n "$SUDO_USER" ]; then
+    # If installed with sudo, set up for the user who ran sudo
+    USER_HOME=$(eval echo ~$SUDO_USER)
+    if [ -d "$USER_HOME" ]; then
+        sudo -u "$SUDO_USER" /usr/share/webly/setup-profiles.sh
+    fi
+else
+    # If not running with sudo, set up for current user
+    /usr/share/webly/setup-profiles.sh
+fi
+
+echo "Webly setup complete!"
 echo "See documentation: https://github.com/blueeaglesam/webly"

@@ -30,11 +30,20 @@ assets = [
 license = "Elastic-2.0"
 summary = "A lightweight, profile-based HTTP client"
 post_install_script = """echo "Setting up webly..."
-echo ""
-echo "To create an initial ~/.webly/profiles configuration, run:"
-echo "  /usr/share/webly/setup-profiles.sh"
-echo ""
-echo "Or create it manually and add your API profiles."
+
+# Run the setup script automatically
+if [ -n "$SUDO_USER" ]; then
+    # If installed with sudo, set up for the user who ran sudo
+    USER_HOME=$(eval echo ~$SUDO_USER)
+    if [ -d "$USER_HOME" ]; then
+        sudo -u "$SUDO_USER" /usr/share/webly/setup-profiles.sh
+    fi
+else
+    # If not running with sudo, set up for current user
+    /usr/share/webly/setup-profiles.sh
+fi
+
+echo "Webly setup complete!"
 echo "See documentation: https://github.com/blueeaglesam/webly\""""
 assets = [
     { source = "target/release/webly", dest = "/usr/bin/webly", mode = "755" },
@@ -67,6 +76,7 @@ path-guid = "87654321-4321-4321-4321-210987654321"
 license = false
 eula = false
 include = [
-    "scripts/setup-profiles.ps1"
+    "scripts/setup-profiles.ps1",
+    "scripts/setup-profiles.bat"
 ]
 
