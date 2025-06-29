@@ -3,6 +3,7 @@ use crate::stdio::{ask, ask_binary, ask_no_space_string, ask_path};
 use crate::url::Endpoint;
 use crate::utils::Result;
 
+use anyhow::{anyhow, Context};
 use ini::{Ini, Properties};
 use std::collections::HashMap;
 
@@ -109,7 +110,12 @@ impl IniProfileStore {
         }
 
         let ini = if std::path::Path::new(&self.file_path).exists() {
-            Ini::load_from_file(&self.file_path)?
+            Ini::load_from_file(&self.file_path).with_context(|| {
+                format!(
+                    "Failed to load profile configuration from '{}'",
+                    self.file_path
+                )
+            })?
         } else {
             return Ok(None);
         };
@@ -129,33 +135,47 @@ impl IniProfileStore {
             }
         }
 
-        fn try_get<T>(section: &Properties, key: &str) -> Option<T>
+        fn try_get<T>(section: &Properties, key: &str) -> Result<Option<T>>
         where
             T: std::str::FromStr,
             T::Err: std::fmt::Debug,
         {
-            section.get(key).and_then(|s| s.parse::<T>().ok())
+            match section.get(key) {
+                Some(s) => match s.parse::<T>() {
+                    Ok(value) => Ok(Some(value)),
+                    Err(e) => Err(anyhow!("Invalid value '{}' for '{}': {:?}", s, key, e)),
+                },
+                None => Ok(None),
+            }
         }
 
-        fn try_get_bool(section: &Properties, key: &str) -> Option<bool> {
-            section
-                .get(key)
-                .and_then(|s| match s.to_lowercase().as_str() {
-                    "true" => Some(true),
-                    "false" => Some(false),
-                    _ => None,
-                })
+        fn try_get_bool(section: &Properties, key: &str) -> Result<Option<bool>> {
+            match section.get(key) {
+                Some(s) => match s.to_lowercase().as_str() {
+                    "true" => Ok(Some(true)),
+                    "false" => Ok(Some(false)),
+                    _ => Err(anyhow!(
+                        "Invalid boolean value '{}' for '{}'. Expected 'true' or 'false'",
+                        s,
+                        key
+                    )),
+                },
+                None => Ok(None),
+            }
         }
 
         let profile = IniProfile {
             name: name.to_string(),
-            server: try_get::<Endpoint>(section, INI_HOST),
-            user: try_get(section, INI_USER),
-            password: try_get(section, INI_PASSWORD),
-            insecure: try_get_bool(section, INI_INSECURE),
-            ca_cert: try_get(section, INI_CA_CERT),
+            server: try_get::<Endpoint>(section, INI_HOST)
+                .with_context(|| format!("Failed to parse host for profile '{name}'"))?,
+            user: try_get(section, INI_USER)?,
+            password: try_get(section, INI_PASSWORD)?,
+            insecure: try_get_bool(section, INI_INSECURE)
+                .with_context(|| format!("Failed to parse insecure flag for profile '{name}'"))?,
+            ca_cert: try_get(section, INI_CA_CERT)?,
             headers: headers.clone(),
-            proxy: try_get::<Endpoint>(section, INI_PROXY),
+            proxy: try_get::<Endpoint>(section, INI_PROXY)
+                .with_context(|| format!("Failed to parse proxy for profile '{name}'"))?,
         };
 
         Ok(Some(profile))
@@ -185,7 +205,12 @@ impl IniProfileStore {
             section.set(format!("@{k}"), v);
         }
 
-        ini.write_to_file(&self.file_path).unwrap();
+        ini.write_to_file(&self.file_path).with_context(|| {
+            format!(
+                "Failed to write profile '{}' to '{}'",
+                profile.name, self.file_path
+            )
+        })?;
 
         Ok(())
     }
@@ -239,11 +264,15 @@ pub fn ask_new_profile(name: &str, i: &std::io::Stdin) -> Result<Option<IniProfi
         None
     };
 
+    let parsed_port = port.parse::<u16>().with_context(|| {
+        format!("Invalid port number '{port}'. Port must be between 1 and 65535")
+    })?;
+
     Ok(Some(IniProfile {
         name: name.to_string(),
         server: Some(Endpoint::new(
             host,
-            Some(port.parse::<u16>().unwrap()),
+            Some(parsed_port),
             Some(scheme.to_string()),
         )),
         user,
@@ -673,19 +702,17 @@ mod test {
 
     #[test]
     fn test_case_insensitive_boolean_parsing() -> Result<()> {
-        let test_cases = vec![
+        // Test valid boolean values that should succeed
+        let valid_cases = vec![
             ("true", Some(true)),
             ("TRUE", Some(true)),
             ("True", Some(true)),
             ("false", Some(false)),
             ("FALSE", Some(false)),
             ("False", Some(false)),
-            ("invalid", None),
-            ("1", None),
-            ("0", None),
         ];
 
-        for (input, expected) in test_cases {
+        for (input, expected) in valid_cases {
             let content = format!(
                 "[{DEFAULT_INI_SECTION}]\n\
                  host=https://example.com\n\
@@ -700,6 +727,26 @@ mod test {
             let profile = ini_store.get_profile(DEFAULT_INI_SECTION)?.unwrap();
 
             assert_eq!(profile.insecure(), expected, "Failed for input: {input}");
+        }
+
+        // Test invalid boolean values that should fail
+        let invalid_cases = vec!["invalid", "1", "0", "yes", "no", "on", "off"];
+
+        for input in invalid_cases {
+            let content = format!(
+                "[{DEFAULT_INI_SECTION}]\n\
+                 host=https://example.com\n\
+                 insecure={input}\n"
+            );
+
+            let mut file = NamedTempFile::new()?;
+            file.write_all(content.as_bytes())?;
+            let path = file.path().to_str().unwrap().to_string();
+
+            let ini_store = IniProfileStore::new(&path);
+            let result = ini_store.get_profile(DEFAULT_INI_SECTION);
+
+            assert!(result.is_err(), "Expected error for invalid input: {input}");
         }
 
         Ok(())

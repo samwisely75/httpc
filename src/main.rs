@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
     }
 
     // Send the request and print the response
-    let res = HttpClient::new(&profile).request(&cmd_args).await?;
+    let res = HttpClient::new(&profile)?.request(&cmd_args).await?;
     tracing::debug!("Response: {:?}", res);
 
     // Print the response details to stderr if verbose mode is enabled
