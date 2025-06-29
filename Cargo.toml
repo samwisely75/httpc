@@ -19,17 +19,27 @@ extended-description = "A fast, modern HTTP client with profile-based configurat
 depends = "$auto"
 section = "net"
 priority = "optional"
+maintainer-scripts = "debian/"
 assets = [
     ["target/release/webly", "usr/bin/", "755"],
     ["README.md", "usr/share/doc/webly/", "644"],
+    ["scripts/setup-profiles.sh", "usr/share/webly/", "755"],
 ]
 
 [package.metadata.generate-rpm]
 license = "Elastic-2.0"
 summary = "A lightweight, profile-based HTTP client"
+post_install_script = """echo "Setting up webly..."
+echo ""
+echo "To create an initial ~/.webly/profiles configuration, run:"
+echo "  /usr/share/webly/setup-profiles.sh"
+echo ""
+echo "Or create it manually and add your API profiles."
+echo "See documentation: https://github.com/blueeaglesam/webly\""""
 assets = [
     { source = "target/release/webly", dest = "/usr/bin/webly", mode = "755" },
     { source = "README.md", dest = "/usr/share/doc/webly/README.md", mode = "644" },
+    { source = "scripts/setup-profiles.sh", dest = "/usr/share/webly/setup-profiles.sh", mode = "755" },
 ]
 
 [dependencies]
@@ -56,4 +66,7 @@ upgrade-guid = "12345678-1234-1234-1234-123456789012"
 path-guid = "87654321-4321-4321-4321-210987654321"
 license = false
 eula = false
+include = [
+    "scripts/setup-profiles.ps1"
+]
 
