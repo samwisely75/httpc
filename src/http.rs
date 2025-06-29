@@ -2,6 +2,7 @@ use crate::url::{Url, UrlPath};
 use crate::utils::Result;
 use crate::{decoder::*, url::Endpoint};
 
+use anyhow::Context;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Certificate, Client, Method, Request, StatusCode,
@@ -70,24 +71,26 @@ impl Debug for HttpClient {
 }
 
 impl HttpClient {
-    pub fn new(args: &impl HttpConnectionProfile) -> Self {
-        let client = Self::build_client(args);
-        HttpClient {
+    pub fn new(args: &impl HttpConnectionProfile) -> Result<Self> {
+        let client = Self::build_client(args)?;
+        Ok(HttpClient {
             client,
             endpoint: args
                 .server()
-                .expect("Endpoint cannot be empty when building HttpClient")
+                .ok_or_else(|| anyhow::anyhow!("Endpoint cannot be empty when building HttpClient"))?
                 .clone(),
             user: args.user().cloned(),
             password: args.password().cloned(),
-        }
+        })
     }
 
     pub async fn request(&self, args: &impl HttpRequestArgs) -> Result<HttpResponse> {
         // Build a request
-        let req = self.build_request(args);
+        let req = self.build_request(args)
+            .context("Failed to build HTTP request")?;
         // contact the server and receive the response
-        let res = self.client.execute(req).await?;
+        let res = self.client.execute(req).await
+            .context("Failed to execute HTTP request")?;
 
         // Acquire the response status and headers
         let headers = res.headers().clone();
@@ -119,10 +122,11 @@ impl HttpClient {
         })
     }
 
-    fn build_request(&self, args: &impl HttpRequestArgs) -> Request {
+    fn build_request(&self, args: &impl HttpRequestArgs) -> Result<Request> {
         let default_method = DEFAULT_METHOD.to_string();
         let method_str = args.method().unwrap_or(&default_method);
-        let method = Method::from_bytes(method_str.as_bytes()).unwrap();
+        let method = Method::from_bytes(method_str.as_bytes())
+            .with_context(|| format!("Invalid HTTP method '{}'", method_str))?;
         let url = Url::new(Some(&self.endpoint), args.url_path()).to_string();
 
         let mut req_builder = self.client.request(method, url);
@@ -137,15 +141,18 @@ impl HttpClient {
 
         // Add headers from request arguments
         for (key, value) in args.headers() {
-            let header_name = HeaderName::from_bytes(key.as_bytes()).unwrap();
-            let header_value = HeaderValue::from_str(value.as_str()).unwrap();
+            let header_name = HeaderName::from_bytes(key.as_bytes())
+                .with_context(|| format!("Invalid header name '{}'", key))?;
+            let header_value = HeaderValue::from_str(value.as_str())
+                .with_context(|| format!("Invalid header value '{}' for header '{}'", value, key))?;
             req_builder = req_builder.header(header_name, header_value);
         }
 
-        req_builder.build().unwrap()
+        req_builder.build()
+            .context("Failed to build HTTP request")
     }
 
-    fn build_client(profile: &impl HttpConnectionProfile) -> Client {
+    fn build_client(profile: &impl HttpConnectionProfile) -> Result<Client> {
         // insecure access
         let insecure_access = profile.insecure().unwrap_or(false);
         let mut cli_builder = Client::builder()
@@ -155,32 +162,36 @@ impl HttpClient {
         // custom CA certificates
         if let Some(ca_cert) = profile.ca_cert() {
             let ca_cert = shellexpand::tilde(&ca_cert).to_string();
-            let cert = Certificate::from_pem(&std::fs::read(ca_cert).unwrap()).unwrap();
+            let cert_data = std::fs::read(&ca_cert)
+                .with_context(|| format!("Failed to read CA certificate file '{}'", ca_cert))?;
+            let cert = Certificate::from_pem(&cert_data)
+                .with_context(|| format!("Failed to parse CA certificate from '{}'", ca_cert))?;
             cli_builder = cli_builder.use_rustls_tls().add_root_certificate(cert);
         }
 
         // default headers
         if !profile.headers().is_empty() {
-            let headers = profile
-                .headers()
-                .iter()
-                .map(|(key, value)| {
-                    (
-                        HeaderName::from_bytes(key.as_bytes()).unwrap(),
-                        HeaderValue::from_str(value.as_str()).unwrap(),
-                    )
-                })
-                .collect::<HeaderMap>();
+            let mut headers = HeaderMap::new();
+            for (key, value) in profile.headers() {
+                let header_name = HeaderName::from_bytes(key.as_bytes())
+                    .with_context(|| format!("Invalid header name '{}'", key))?;
+                let header_value = HeaderValue::from_str(value.as_str())
+                    .with_context(|| format!("Invalid header value '{}' for header '{}'", value, key))?;
+                headers.insert(header_name, header_value);
+            }
             cli_builder = cli_builder.default_headers(headers);
         }
 
         // proxy
         if let Some(proxy) = profile.proxy() {
             let proxy_url = proxy.to_string();
-            cli_builder = cli_builder.proxy(reqwest::Proxy::all(proxy_url).unwrap());
+            let proxy = reqwest::Proxy::all(&proxy_url)
+                .with_context(|| format!("Failed to configure proxy '{}'", proxy_url))?;
+            cli_builder = cli_builder.proxy(proxy);
         }
 
-        cli_builder.build().unwrap()
+        cli_builder.build()
+            .context("Failed to build HTTP client")
     }
 }
 
@@ -331,9 +342,7 @@ mod tests {
 
     #[test]
     fn test_http_client_creation() {
-        let profile = MockProfile::new();
-        let client = HttpClient::new(&profile);
-
+        let profile = MockProfile::new();        let client = HttpClient::new(&profile).unwrap();
         assert_eq!(client.endpoint.scheme(), Some(&"https".to_string()));
         assert_eq!(client.endpoint.host(), "httpbin.org");
         assert!(client.user.is_none());
@@ -355,7 +364,7 @@ mod tests {
         let client = HttpClient::new(&profile);
         let request_args = MockRequest::new();
 
-        let request = client.build_request(&request_args);
+        let request = client.build_request(&request_args).unwrap();
 
         assert_eq!(request.method(), &Method::GET);
         assert_eq!(request.url().path(), "/get");
@@ -369,7 +378,7 @@ mod tests {
             .with_method("POST")
             .with_body("{\"test\": \"data\"}");
 
-        let request = client.build_request(&request_args);
+        let request = client.build_request(&request_args).unwrap();
 
         assert_eq!(request.method(), &Method::POST);
         assert!(request.body().is_some());
@@ -385,7 +394,7 @@ mod tests {
         let client = HttpClient::new(&profile);
         let request_args = MockRequest::new().with_headers(headers);
 
-        let request = client.build_request(&request_args);
+        let request = client.build_request(&request_args).unwrap();
 
         assert!(request.headers().get("x-custom-header").is_some());
         assert!(request.headers().get("authorization").is_some());
@@ -473,7 +482,7 @@ mod tests {
         let client = HttpClient::new(&profile);
         let request_args = MockRequest::new();
 
-        let request = client.build_request(&request_args);
+        let request = client.build_request(&request_args).unwrap();
 
         // Basic auth should be present in the request
         assert!(request.headers().get("authorization").is_some());
@@ -488,7 +497,7 @@ mod tests {
 
         for method in &methods {
             let request_args = MockRequest::new().with_method(method);
-            let request = client.build_request(&request_args);
+            let request = client.build_request(&request_args).unwrap();
 
             let expected_method = reqwest::Method::from_bytes(method.as_bytes()).unwrap();
             assert_eq!(request.method(), &expected_method);
@@ -501,7 +510,7 @@ mod tests {
         let client = HttpClient::new(&profile);
         let request_args = MockRequest::new().with_body("");
 
-        let request = client.build_request(&request_args);
+        let request = client.build_request(&request_args).unwrap();
 
         // Empty body should still be included
         assert!(request.body().is_some());
@@ -527,7 +536,7 @@ mod tests {
         );
 
         let request_args = MockRequest::new().with_headers(headers);
-        let request = client.build_request(&request_args);
+        let request = client.build_request(&request_args).unwrap();
 
         assert!(request.headers().get("content-type").is_some());
         assert!(request.headers().get("accept-encoding").is_some());
@@ -578,7 +587,7 @@ mod tests {
             let mut request_args = MockRequest::new();
             request_args.url_path = Some(url_path);
 
-            let request = client.build_request(&request_args);
+            let request = client.build_request(&request_args).unwrap();
             assert_eq!(request.url().as_str(), expected_url);
         }
     }

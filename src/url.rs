@@ -1,7 +1,8 @@
+use anyhow::{anyhow, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
-    fmt::{Display, Error, Formatter},
+    fmt::{Display, Formatter},
     str::FromStr,
 };
 
@@ -56,11 +57,8 @@ impl Endpoint {
         Endpoint { host, port, scheme }
     }
 
-    pub fn parse(s: &str) -> Result<Self, std::fmt::Error> {
-        match Self::from_str(s) {
-            Ok(endpoint) => Ok(endpoint),
-            Err(_) => Err(Error),
-        }
+    pub fn parse(s: &str) -> Result<Self> {
+        Self::from_str(s).map_err(|e| anyhow!("Failed to parse endpoint '{}': {}", s, e))
     }
 
     pub fn scheme(&self) -> Option<&String> {
