@@ -21,6 +21,16 @@ clean: ## Clean build artifacts
 lint: ## Run clippy lints
 	cargo clippy --all-targets --all-features -- -D warnings
 
+fix: ## Automatically fix linting and formatting issues
+	@echo "🔧 Running automatic fixes..."
+	@cargo fmt
+	@cargo clippy --fix --allow-dirty --all-targets --all-features
+	@echo "✨ Verifying fixes..."
+	@cargo clippy --all-targets --all-features -- -D warnings
+	@echo "🧪 Running tests..."
+	@cargo test
+	@echo "✅ All fixes applied successfully!"
+
 fmt: ## Format code
 	cargo fmt --all
 

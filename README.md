@@ -465,6 +465,62 @@ Python and Bash scripts work but become unwieldy and hard to maintain. Sometimes
 
 ---
 
+## Contributing
+
+### Development Setup
+
+1. **Prerequisites**
+
+   ```bash
+   # Install Rust toolchain
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   source ~/.cargo/env
+   ```
+
+2. **Build from source**
+
+   ```bash
+   git clone https://github.com/elasticsatch/webly.git
+   cd webly
+   cargo build
+   ```
+
+### Code Quality Tools
+
+For contributors working on the codebase, we've set up automated tooling to maintain code quality:
+
+```bash
+# Automatically fix formatting and linting issues
+make fix
+
+# Or manually run individual steps:
+cargo fmt                           # Format code
+cargo clippy --fix --allow-dirty    # Fix clippy warnings
+cargo test                          # Run tests
+```
+
+The `make fix` command will:
+
+- ✨ Format all code with `rustfmt`
+- 🔧 Automatically fix clippy warnings (like `uninlined_format_args`)
+- ✅ Verify all lints pass
+- 🧪 Run the test suite to ensure nothing broke
+
+**Pro tip:** Run `make fix` before committing to ensure your code passes CI!
+
+### Other Make Targets
+
+```bash
+make help           # Show all available targets
+make build          # Build the project  
+make test           # Run tests
+make lint           # Check linting only
+make fmt            # Format code only
+make check          # Run format + lint + test
+```
+
+---
+
 ## License
 
 Licensed under the Elastic License 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at:

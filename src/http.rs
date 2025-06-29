@@ -149,9 +149,8 @@ impl HttpClient {
         for (key, value) in args.headers() {
             let header_name = HeaderName::from_bytes(key.as_bytes())
                 .with_context(|| format!("Invalid header name '{key}'"))?;
-            let header_value = HeaderValue::from_str(value.as_str()).with_context(|| {
-                format!("Invalid header value '{value}' for header '{key}'")
-            })?;
+            let header_value = HeaderValue::from_str(value.as_str())
+                .with_context(|| format!("Invalid header value '{value}' for header '{key}'"))?;
             req_builder = req_builder.header(header_name, header_value);
         }
 
