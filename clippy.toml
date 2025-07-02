@@ -22,3 +22,6 @@ disallowed-methods = [
 
 # Documentation requirements
 missing-docs-in-crate-items = true
+
+# Enable additional helpful lints
+warn-on-all-wildcard-imports = true

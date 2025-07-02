@@ -40,13 +40,12 @@ Once secrets are configured, releases are fully automated:
 
 1. **Create a release tag**: `git tag v0.1.7 && git push origin v0.1.7`
 2. **Automated pipeline runs**:
-   - ✅ CI checks (Linux, macOS, Windows)
+   - ✅ CI checks (Linux, macOS)
    - ✅ Security audit
    - ✅ Integration tests
    - 🔨 Build binaries and packages
    - 🧪 Test package installations
    - 📦 Publish to crates.io
-   - 🐳 Push Docker image
    - 🍺 Update Homebrew formula
    - 📋 Create GitHub release
 
@@ -56,8 +55,6 @@ After a successful release, verify:
 
 - [ ] New version appears on [crates.io](https://crates.io/crates/webly)
 - [ ] GitHub release created with all assets
-- [ ] Docker image pushed to registry
-- [ ] Homebrew formula updated (if applicable)
 - [ ] Installation works: `cargo install webly`
 
 ## Troubleshooting

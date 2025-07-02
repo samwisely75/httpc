@@ -1,4 +1,4 @@
-.PHONY: help build test clean lint fmt check install release docker
+.PHONY: help build test clean lint fmt check install release
 
 # Default target
 help: ## Show this help message
@@ -21,6 +21,16 @@ clean: ## Clean build artifacts
 lint: ## Run clippy lints
 	cargo clippy --all-targets --all-features -- -D warnings
 
+fix: ## Automatically fix linting and formatting issues
+	@echo "🔧 Running automatic fixes..."
+	@cargo fmt
+	@cargo clippy --fix --allow-dirty --all-targets --all-features
+	@echo "✨ Verifying fixes..."
+	@cargo clippy --all-targets --all-features -- -D warnings
+	@echo "🧪 Running tests..."
+	@cargo test
+	@echo "✅ All fixes applied successfully!"
+
 fmt: ## Format code
 	cargo fmt --all
 
@@ -29,19 +39,19 @@ fmt-check: ## Check code formatting
 
 check: fmt-check lint test ## Run all checks (format, lint, test)
 
+# Security
+security-check: ## Run security audits and vulnerability checks
+	@echo "🔒 Running security checks..."
+	@cargo audit
+	@cargo deny check
+	@echo "✅ Security checks completed!"
+
 # Installation and release
 install: ## Install the binary locally
 	cargo install --path .
 
 release: ## Build release version
 	cargo build --release
-
-# Docker tasks
-docker-build: ## Build Docker image
-	docker build -t webly:latest .
-
-docker-run: ## Run Docker container
-	docker run --rm -it webly:latest --help
 
 # Documentation
 docs: ## Generate documentation

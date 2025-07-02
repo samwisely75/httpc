@@ -1,7 +1,7 @@
 # webly
 
-[![CI](https://github.com/elasticsatch/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/elasticsatch/webly/actions/workflows/ci.yml)
-[![Release](https://github.com/elasticsatch/webly/actions/workflows/release.yml/badge.svg)](https://github.com/elasticsatch/webly/actions/workflows/release.yml)
+[![CI](https://github.com/samwisely75/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/samwisely75/webly/actions/workflows/ci.yml)
+[![Release](https://github.com/samwisely75/webly/actions/workflows/release.yml/badge.svg)](https://github.com/samwisely75/webly/actions/workflows/release.yml)
 [![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
 [![License](https://img.shields.io/badge/license-Elastic%20License%202.0-blue.svg)](LICENSE)
 [![Downloads](https://img.shields.io/crates/d/webly.svg)](https://crates.io/crates/webly)
@@ -37,33 +37,25 @@ Plus all the HTTP client features you expect:
 
 ## Installation
 
-Download the appropriate binary from [releases](https://github.com/elasticsatch/webly/releases) for your platform:
+Download the appropriate binary from [releases](https://github.com/samwisely75/webly/releases) for your platform:
 
 **macOS (Homebrew):**
 
 ```bash
 # Install via Homebrew (easiest method for macOS)
-brew install elasticsatch/tap/webly
+brew install samwisely75/tap/webly
 ```
 
 **Linux/macOS (Manual):**
 
 ```bash
 # Download and extract
-curl -L https://github.com/elasticsatch/webly/releases/latest/download/webly-linux-x64.tar.gz | tar -xz
+curl -L https://github.com/samwisely75/webly/releases/latest/download/webly-linux-x64.tar.gz | tar -xz
 sudo mv webly /usr/local/bin/
 
 # Or for macOS
-curl -L https://github.com/elasticsatch/webly/releases/latest/download/webly-macos-x64.tar.gz | tar -xz
+curl -L https://github.com/samwisely75/webly/releases/latest/download/webly-macos-x64.tar.gz | tar -xz
 sudo mv webly /usr/local/bin/
-```
-
-**Windows:**
-
-```powershell
-# Download and install the MSI package from releases
-# This will automatically add webly to your PATH
-# Download webly-VERSION-x64.msi from https://github.com/elasticsatch/webly/releases
 ```
 
 **From crates.io (requires Rust):**
@@ -75,11 +67,10 @@ cargo install webly
 **Build from source:**
 
 ```bash
-git clone https://github.com/elasticsatch/webly.git
+git clone https://github.com/samwisely75/webly.git
 cd webly
 cargo build --release
-sudo cp target/release/webly /usr/local/bin/  # Linux/macOS
-# or copy target\release\webly.exe to PATH on Windows
+sudo cp target/release/webly /usr/local/bin/
 ```
 
 Test the installation: `webly --help`
@@ -90,7 +81,7 @@ No additional dependencies required - webly is a single, self-contained binary.
 
 ### Configuration File Location
 
-webly looks for configuration in `~/.webly/profiles` (on Unix/Linux/macOS) or `%USERPROFILE%\.webly\profiles` (on Windows).
+webly looks for configuration in `~/.webly/profiles`.
 
 ### Configuration Format
 
@@ -468,9 +459,65 @@ Python and Bash scripts work but become unwieldy and hard to maintain. Sometimes
 
 - **Single binary** - No runtime dependencies, easy deployment
 - **Performance** - Native speed, as fast as curl
-- **Cross-platform** - Works everywhere (Linux, macOS, Windows)
+- **Cross-platform** - Works on Linux and macOS
 - **Reliability** - Memory safety and robust error handling
 - **No compatibility hell** - Unlike Python scripts with version dependencies
+
+---
+
+## Contributing
+
+### Development Setup
+
+1. **Prerequisites**
+
+   ```bash
+   # Install Rust toolchain
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   source ~/.cargo/env
+   ```
+
+2. **Build from source**
+
+   ```bash
+   git clone https://github.com/samwisely75/webly.git
+   cd webly
+   cargo build
+   ```
+
+### Code Quality Tools
+
+For contributors working on the codebase, we've set up automated tooling to maintain code quality:
+
+```bash
+# Automatically fix formatting and linting issues
+make fix
+
+# Or manually run individual steps:
+cargo fmt                           # Format code
+cargo clippy --fix --allow-dirty    # Fix clippy warnings
+cargo test                          # Run tests
+```
+
+The `make fix` command will:
+
+- ✨ Format all code with `rustfmt`
+- 🔧 Automatically fix clippy warnings (like `uninlined_format_args`)
+- ✅ Verify all lints pass
+- 🧪 Run the test suite to ensure nothing broke
+
+**Pro tip:** Run `make fix` before committing to ensure your code passes CI!
+
+### Other Make Targets
+
+```bash
+make help           # Show all available targets
+make build          # Build the project  
+make test           # Run tests
+make lint           # Check linting only
+make fmt            # Format code only
+make check          # Run format + lint + test
+```
 
 ---
 

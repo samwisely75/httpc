@@ -19,4 +19,4 @@ else
 fi
 
 echo "Webly setup complete!"
-echo "See documentation: https://github.com/elasticsatch/webly"
+echo "See documentation: https://github.com/samwisely75/webly"

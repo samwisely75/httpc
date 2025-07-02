@@ -1,12 +1,12 @@
 [package]
 name = "webly"
-version = "0.1.9"
-authors = ["Satoshi Iizuka"]
+version = "0.1.12"
+authors = ["Satoshi Iizuka <satoshi.iizuka@elastic.co>"]
 description = "A lightweight, profile-based HTTP client"
 edition = "2021"
 license = "Elastic-2.0"
-repository = "https://github.com/elasticsatch/webly"
-homepage = "https://github.com/elasticsatch/webly"
+repository = "https://github.com/samwisely75/webly"
+homepage = "https://github.com/samwisely75/webly"
 readme = "README.md"
 keywords = ["http", "client", "cli", "curl", "api"]
 categories = ["command-line-utilities", "web-programming::http-client"]
@@ -19,40 +19,24 @@ extended-description = "A fast, modern HTTP client with profile-based configurat
 depends = "$auto"
 section = "net"
 priority = "optional"
-maintainer-scripts = "debian/"
 assets = [
     ["target/release/webly", "usr/bin/", "755"],
     ["README.md", "usr/share/doc/webly/", "644"],
-    ["scripts/setup-profiles.sh", "usr/share/webly/", "755"],
 ]
 
 [package.metadata.generate-rpm]
 license = "Elastic-2.0"
 summary = "A lightweight, profile-based HTTP client"
 post_install_script = """echo "Setting up webly..."
-
-# Run the setup script automatically
-if [ -n "$SUDO_USER" ]; then
-    # If installed with sudo, set up for the user who ran sudo
-    USER_HOME=$(eval echo ~$SUDO_USER)
-    if [ -d "$USER_HOME" ]; then
-        sudo -u "$SUDO_USER" /usr/share/webly/setup-profiles.sh
-    fi
-else
-    # If not running with sudo, set up for current user
-    /usr/share/webly/setup-profiles.sh
-fi
-
-echo "Webly setup complete!"
-echo "See documentation: https://github.com/elasticsatch/webly\""""
+echo "Webly installed successfully!"
+echo "See documentation: https://github.com/samwisely75/webly\""""
 assets = [
     { source = "target/release/webly", dest = "/usr/bin/webly", mode = "755" },
     { source = "README.md", dest = "/usr/share/doc/webly/README.md", mode = "644" },
-    { source = "scripts/setup-profiles.sh", dest = "/usr/share/webly/setup-profiles.sh", mode = "755" },
 ]
 
 [dependencies]
-base64 = "0.22.1"
+anyhow = "1.0"
 flate2 = "1.1.0"
 reqwest = { version = "0.12.12", features = ["rustls-tls", "blocking", "json"], default-features = false }
 tokio = { version = "1.44.0", features = ["full"] }
@@ -61,7 +45,6 @@ rust-ini = "0.21.1"
 shellexpand = "3.1.0"
 zstd = "0.13.3"
 tempfile = "3.19.1"
-atty = "0.2.14"
 regex = "1.11.1"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = [ "chrono", "env-filter" ] }
@@ -69,19 +52,4 @@ encoding_rs = "0.8.35"
 bytes = "1.10.1"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
-
-[package.metadata.wix]
-upgrade-guid = "12345678-1234-1234-1234-123456789012"
-path-guid = "87654321-4321-4321-4321-210987654321"
-license = false
-eula = false
-
-# Include setup scripts as binary files (not WiX source files)
-[[package.metadata.wix.files]]
-source = "scripts/setup-profiles.ps1"
-destination = "[INSTALLDIR]setup-profiles.ps1"
-
-[[package.metadata.wix.files]]
-source = "scripts/setup-profiles.bat"
-destination = "[INSTALLDIR]setup-profiles.bat"
 
