@@ -1,7 +1,7 @@
 # webly
 
-[![CI](https://github.com/elasticsatch/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/elasticsatch/webly/actions/workflows/ci.yml)
-[![Release](https://github.com/elasticsatch/webly/actions/workflows/release.yml/badge.svg)](https://github.com/elasticsatch/webly/actions/workflows/release.yml)
+[![CI](https://github.com/samwisely75/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/samwisely75/webly/actions/workflows/ci.yml)
+[![Release](https://github.com/samwisely75/webly/actions/workflows/release.yml/badge.svg)](https://github.com/samwisely75/webly/actions/workflows/release.yml)
 [![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
 [![License](https://img.shields.io/badge/license-Elastic%20License%202.0-blue.svg)](LICENSE)
 [![Downloads](https://img.shields.io/crates/d/webly.svg)](https://crates.io/crates/webly)
@@ -37,24 +37,24 @@ Plus all the HTTP client features you expect:
 
 ## Installation
 
-Download the appropriate binary from [releases](https://github.com/elasticsatch/webly/releases) for your platform:
+Download the appropriate binary from [releases](https://github.com/samwisely75/webly/releases) for your platform:
 
 **macOS (Homebrew):**
 
 ```bash
 # Install via Homebrew (easiest method for macOS)
-brew install elasticsatch/tap/webly
+brew install samwisely75/tap/webly
 ```
 
 **Linux/macOS (Manual):**
 
 ```bash
 # Download and extract
-curl -L https://github.com/elasticsatch/webly/releases/latest/download/webly-linux-x64.tar.gz | tar -xz
+curl -L https://github.com/samwisely75/webly/releases/latest/download/webly-linux-x64.tar.gz | tar -xz
 sudo mv webly /usr/local/bin/
 
 # Or for macOS
-curl -L https://github.com/elasticsatch/webly/releases/latest/download/webly-macos-x64.tar.gz | tar -xz
+curl -L https://github.com/samwisely75/webly/releases/latest/download/webly-macos-x64.tar.gz | tar -xz
 sudo mv webly /usr/local/bin/
 ```
 
@@ -67,7 +67,7 @@ cargo install webly
 **Build from source:**
 
 ```bash
-git clone https://github.com/elasticsatch/webly.git
+git clone https://github.com/samwisely75/webly.git
 cd webly
 cargo build --release
 sudo cp target/release/webly /usr/local/bin/
@@ -480,7 +480,7 @@ Python and Bash scripts work but become unwieldy and hard to maintain. Sometimes
 2. **Build from source**
 
    ```bash
-   git clone https://github.com/elasticsatch/webly.git
+   git clone https://github.com/samwisely75/webly.git
    cd webly
    cargo build
    ```
