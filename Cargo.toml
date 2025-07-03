@@ -1,7 +1,7 @@
 [package]
 name = "webly"
 version = "0.1.13"
-authors = ["Satoshi Iizuka <satoshi.iizuka@elastic.co>"]
+authors = ["Sam Wisely <samwisely75@gmail.com>"]
 description = "A lightweight, profile-based HTTP client"
 edition = "2021"
 license = "Elastic-2.0"
@@ -13,8 +13,8 @@ categories = ["command-line-utilities", "web-programming::http-client"]
 
 # Package metadata for deb/rpm generation
 [package.metadata.deb]
-maintainer = "Satoshi Iizuka"
-copyright = "2025, Satoshi Iizuka"
+maintainer = "Sam Wisely"
+copyright = "2025, Sam Wisely"
 extended-description = "A fast, modern HTTP client with profile-based configuration for the command line. Think of it as curl with persistent profiles and simplified syntax."
 depends = "$auto"
 section = "net"
