@@ -93,7 +93,7 @@ jobs:
       - name: Prepare binary (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          cp target/${{ matrix.target }}/release/webly.exe ${{ matrix.name }}
+          cp target/${{ matrix.target }}/release/webly.exe ${{ matrix.name }}.exe
 
       - name: Prepare binary (Unix)
         if: matrix.os != 'windows-latest'
@@ -105,7 +105,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: ${{ matrix.name }}
+          path: ${{ matrix.name }}${{ runner.os == 'Windows' && '.exe' || '' }}
           if-no-files-found: error
 
   build-packages:
@@ -312,9 +312,12 @@ jobs:
 
       - name: Test binary (Windows)
         if: matrix.os == 'windows-latest'
+        shell: cmd
         run: |
-          .\${{ matrix.binary }}.exe --version
-          .\${{ matrix.binary }}.exe --help
+          .\%BINARY%.exe --version
+          .\%BINARY%.exe --help
+        env:
+          BINARY: ${{ matrix.binary }}
 
   create-release:
     needs: [build, build-packages, test-binaries]
