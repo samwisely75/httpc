@@ -239,7 +239,7 @@ print_success "Release build completed!"
 
 # Step 6: Test the binary
 print_status "Testing the release binary..."
-webly GET https://www.swapi.tech/api/people/1 | jq -r .message > /tmp/webly_test_output
+./target/release/webly GET https://www.swapi.tech/api/people/1 | jq -r .message > /tmp/webly_test_output
 EXPECTED='ok'
 ACTUAL=$(cat /tmp/webly_test_output)
 if [ "$ACTUAL" = "$EXPECTED" ]; then
