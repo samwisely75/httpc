@@ -1,10 +1,11 @@
 # webly
 
+[![License](https://img.shields.io/badge/license-Elastic%20License%202.0-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/github/v/release/samwisely75/webly)](https://github.com/samwisely75/webly/releases)
+[![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
+[![Downloads](https://img.shields.io/crates/d/webly.svg)](https://crates.io/crates/webly)
 [![CI](https://github.com/samwisely75/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/samwisely75/webly/actions/workflows/ci.yml)
 [![Release](https://github.com/samwisely75/webly/actions/workflows/release.yml/badge.svg)](https://github.com/samwisely75/webly/actions/workflows/release.yml)
-[![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
-[![License](https://img.shields.io/badge/license-Elastic%20License%202.0-blue.svg)](LICENSE)
-[![Downloads](https://img.shields.io/crates/d/webly.svg)](https://crates.io/crates/webly)
 
 A lightweight, profile-based HTTP client that allows you to talk to web servers with minimal effort. Think of it as `curl` with persistent profiles and simplified syntax.
 
