@@ -15,7 +15,7 @@ categories = ["command-line-utilities", "web-programming::http-client"]
 [package.metadata.deb]
 maintainer = "Sam Wisely"
 copyright = "2025, Sam Wisely"
-extended-description = "A fast, modern HTTP client with profile-based configuration for the command line. Think of it as curl with persistent profiles and simplified syntax."
+extended-description = "A fast, modern HTTP client with profile-based configuration for the command line. Think of it as curl with persistent profile and simplified syntax."
 depends = "$auto"
 section = "net"
 priority = "optional"

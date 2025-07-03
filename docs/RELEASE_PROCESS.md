@@ -62,8 +62,8 @@ When you push a `release/*` branch, the pipeline automatically:
 - Man pages and documentation included
 
 ### Configuration Templates
-- Includes `profiles.example` with common configurations
-- Automatically creates `~/.webly/profiles` on first install
+- Includes `profile.example` with common configurations
+- Automatically creates `~/.webly/profile` on first install
 - Examples for various API types (REST, GraphQL, XML)
 
 ### Testing
@@ -114,8 +114,8 @@ Each release includes:
 # Debian/Ubuntu
 sudo dpkg -i webly_*_amd64.deb
 
-# Creates /etc/webly/profiles.example
-# Sets up ~/.webly/profiles if not exists
+# Creates /etc/webly/profile.example
+# Sets up ~/.webly/profile if not exists
 ```
 
 ### Direct Binary
@@ -140,8 +140,8 @@ The release pipeline creates comprehensive profile examples:
 # Check installation
 webly --version
 
-# Copy example profiles
-cp /etc/webly/profiles.example ~/.webly/profiles
+# Copy example profile
+cp /etc/webly/profile.example ~/.webly/profile
 # Edit as needed
 ```
 

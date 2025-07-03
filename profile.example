@@ -1,0 +1,12 @@
+# Webly Configuration Profile
+# This file contains configuration profile for WebLy HTTP client
+# Copy this file to ~/.webly/profile and customize as needed
+
+[default]
+host = https://api.example.com
+@content-type = application/json
+@accept = application/json
+# user = username
+# password = password
+# insecure = false
+# ca_cert = /path/to/cert.pem
