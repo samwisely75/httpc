@@ -293,7 +293,7 @@ jobs:
           - os: macos-latest
             binary: webly-macos-x64
           - os: windows-latest
-            binary: webly-windows-x64.exe
+            binary: webly-windows-x64
 
     runs-on: ${{ matrix.os }}
     
@@ -313,8 +313,8 @@ jobs:
       - name: Test binary (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          ./${{ matrix.binary }} --version
-          ./${{ matrix.binary }} --help
+          ./${{ matrix.binary }}.exe --version
+          ./${{ matrix.binary }}.exe --help
 
   create-release:
     needs: [build, build-packages, test-binaries]
