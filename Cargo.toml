@@ -1,6 +1,6 @@
 [package]
 name = "webly"
-version = "0.1.12"
+version = "0.1.13"
 authors = ["Satoshi Iizuka <satoshi.iizuka@elastic.co>"]
 description = "A lightweight, profile-based HTTP client"
 edition = "2021"
