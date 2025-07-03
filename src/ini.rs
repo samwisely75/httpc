@@ -7,7 +7,7 @@ use anyhow::{anyhow, Context};
 use ini::{Ini, Properties};
 use std::collections::HashMap;
 
-pub const DEFAULT_INI_FILE_PATH: &str = "~/.webly/profiles";
+pub const DEFAULT_INI_FILE_PATH: &str = "~/.webly/profile";
 pub const PROFILE_BLANK: &str = "none";
 
 const INI_HOST: &str = "host";

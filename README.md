@@ -1,12 +1,13 @@
 # webly
 
+[![License](https://img.shields.io/badge/license-Elastic%20License%202.0-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/github/v/release/samwisely75/webly)](https://github.com/samwisely75/webly/releases)
+[![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
+[![Downloads](https://img.shields.io/crates/d/webly.svg)](https://crates.io/crates/webly)
 [![CI](https://github.com/samwisely75/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/samwisely75/webly/actions/workflows/ci.yml)
 [![Release](https://github.com/samwisely75/webly/actions/workflows/release.yml/badge.svg)](https://github.com/samwisely75/webly/actions/workflows/release.yml)
-[![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
-[![License](https://img.shields.io/badge/license-Elastic%20License%202.0-blue.svg)](LICENSE)
-[![Downloads](https://img.shields.io/crates/d/webly.svg)](https://crates.io/crates/webly)
 
-A lightweight, profile-based HTTP client that allows you to talk to web servers with minimal effort. Think of it as `curl` with persistent profiles and simplified syntax.
+A lightweight, profile-based HTTP client that allows you to talk to web servers with minimal effort. Think of it as `curl` with persistent profile and simplified syntax.
 
 ## Table of Contents
 
@@ -22,7 +23,7 @@ A lightweight, profile-based HTTP client that allows you to talk to web servers 
 
 ## Features
 
-**Profile-based simplicity** - Transform complex curl commands into simple, memorable requests. Store connection details, authentication, and headers in `~/.webly/profiles` once, then use clean relative URLs like `webly -p prod GET /api/users` instead of repeating lengthy curl parameters every time.
+**Profile-based simplicity** - Transform complex curl commands into simple, memorable requests. Store connection details, authentication, and headers in `~/.webly/profile` once, then use clean relative URLs like `webly -p prod GET /api/users` instead of repeating lengthy curl parameters every time.
 
 Plus all the HTTP client features you expect:
 
@@ -81,7 +82,7 @@ No additional dependencies required - webly is a single, self-contained binary.
 
 ### Configuration File Location
 
-webly looks for configuration in `~/.webly/profiles`.
+webly looks for configuration in `~/.webly/profile`.
 
 ### Configuration Format
 
@@ -160,11 +161,11 @@ webly GET https://completely-different-host.com/api
 1. **Create a profile for your favorite API:**
 
    ```bash
-   # Create ~/.webly directory and profiles file
+   # Create ~/.webly directory and profile file
    mkdir -p ~/.webly
    echo "[swapi]
    host = https://swapi.dev/api
-   @content-type = application/json" > ~/.webly/profiles
+   @content-type = application/json" > ~/.webly/profile
    ```
 
 2. **Use the profile to explore the Star Wars universe:**
@@ -234,7 +235,7 @@ echo '{
 
 ### Profile-Based Requests
 
-Use profiles to avoid repeating connection details:
+Use profile to avoid repeating connection details:
 
 ```bash
 # Use default profile
@@ -362,9 +363,9 @@ webly -p elastic PUT /my-index/_doc/1 '{
 ### Development Workflow
 
 ```bash
-# Set up profiles for different environments
+# Set up profile for different environments
 mkdir -p ~/.webly
-cat > ~/.webly/profiles << EOF
+cat > ~/.webly/profile << EOF
 [dev]
 host = http://localhost:3000
 @content-type = application/json
@@ -399,7 +400,7 @@ A: Make sure webly is in your PATH. Try `which webly` or reinstall following the
 A: Use `--insecure` to skip certificate validation, or provide a CA certificate with `--ca-cert /path/to/ca.pem`.
 
 **Q: Profile not found**
-A: Check that `~/.webly/profiles` exists and contains the profile. Use `webly -p nonexistent GET /` to see the error.
+A: Check that `~/.webly/profile` exists and contains the profile. Use `webly -p nonexistent GET /` to see the error.
 
 **Q: Authentication failures**
 A: Verify credentials in your profile or override with `--user` and `--password` flags.
@@ -428,7 +429,7 @@ Check your configuration file:
 
 ```bash
 # View current configuration
-cat ~/.webly/profiles
+cat ~/.webly/profile
 
 # Test with a simple request
 webly -p your-profile GET /simple/endpoint

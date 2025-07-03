@@ -1,11 +1,11 @@
 #!/bin/bash
-# Setup script for webly - creates initial ~/.webly/profiles configuration
+# Setup script for webly - creates initial ~/.webly/profile configuration
 
 set -e
 
 # Create webly config directory
 CONFIG_DIR="$HOME/.webly"
-PROFILES_FILE="$CONFIG_DIR/profiles"
+PROFILE_PATH="$CONFIG_DIR/profile"
 
 # Create directory if it doesn't exist
 if [ ! -d "$CONFIG_DIR" ]; then
@@ -13,15 +13,15 @@ if [ ! -d "$CONFIG_DIR" ]; then
     echo "Created webly config directory: $CONFIG_DIR"
 fi
 
-# Create initial profiles file if it doesn't exist
-if [ ! -f "$PROFILES_FILE" ]; then
-    cat > "$PROFILES_FILE" << 'EOF'
-# Webly Profiles Configuration
+# Create initial profile file if it doesn't exist
+if [ ! -f "$PROFILE_PATH" ]; then
+    cat > "$PROFILE_PATH" << 'EOF'
+# Webly profile Configuration
 # 
 # This file contains profile definitions for the webly HTTP client.
 # Each profile section defines connection settings and default headers.
 #
-# Example profiles:
+# Example profile:
 
 [httpbin]
 host = https://httpbin.org
@@ -36,19 +36,19 @@ host = https://jsonplaceholder.typicode.com
 host = http://localhost:3000
 @content-type = application/json
 
-# Add your own profiles here:
+# Add your own profile here:
 # [myapi]
 # host = https://api.example.com
 # @authorization = Bearer your-token-here
 # @content-type = application/json
 EOF
-    echo "Created initial profiles configuration: $PROFILES_FILE"
+    echo "Created initial profile configuration: $PROFILE_PATH"
     echo ""
     echo "Example usage:"
     echo "  webly -p httpbin GET /get"
     echo "  webly -p jsonplaceholder GET /posts/1"
     echo ""
-    echo "Edit $PROFILES_FILE to add your own API profiles."
+    echo "Edit $PROFILE_PATH to add your own API profile."
 else
-    echo "Profiles file already exists: $PROFILES_FILE"
+    echo "profile file already exists: $PROFILE_PATH"
 fi
