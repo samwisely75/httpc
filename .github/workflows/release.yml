@@ -1,0 +1,561 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - 'release/*'  # Only trigger on release branches
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
+        default: 'v0.1.0'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # Windows
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            name: webly-windows-x64
+          
+          # macOS
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            name: webly-macos-x64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            name: webly-macos-arm64
+          
+          # Linux
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: webly-linux-x64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: webly-linux-arm64
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Configure cross-compilation (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          mkdir -p ~/.cargo
+          echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config.toml
+          echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config.toml
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare binary (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cp target/${{ matrix.target }}/release/webly.exe ${{ matrix.name }}
+
+      - name: Prepare binary (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cp target/${{ matrix.target }}/release/webly ${{ matrix.name }}
+          chmod +x ${{ matrix.name }}
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}
+          if-no-files-found: error
+
+  build-packages:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Linux binary
+        uses: actions/download-artifact@v4
+        with:
+          name: webly-linux-x64
+          path: binaries/
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm alien fakeroot
+
+      - name: Setup package structure
+        run: |
+          chmod +x binaries/webly-linux-x64
+          
+          # Create directory structure for packaging
+          mkdir -p packaging/usr/bin
+          mkdir -p packaging/usr/share/man/man1
+          mkdir -p packaging/DEBIAN
+          mkdir -p packaging/usr/share/doc/webly
+          mkdir -p packaging/etc/webly
+          
+          # Copy binary
+          cp binaries/webly-linux-x64 packaging/usr/bin/webly
+          
+          # Create profiles template
+          cat > packaging/etc/webly/profiles.example << 'EOF'
+          # WebLy Configuration Profiles
+          # Copy this file to ~/.webly/profiles and customize as needed
+
+          [default]
+          host = https://api.example.com
+          @content-type = application/json
+          @accept = application/json
+          # user = username
+          # password = password
+          # insecure = false
+          # ca_cert = /path/to/cert.pem
+
+          [local]
+          host = http://localhost:8080
+          @content-type = application/json
+
+          [staging]
+          host = https://staging-api.example.com
+          @content-type = application/json
+          @authorization = Bearer your-token-here
+          EOF
+          
+          # Create basic man page
+          cat > packaging/usr/share/man/man1/webly.1 << 'EOF'
+          .TH WEBLY 1 "$(date +'%B %Y')" "webly $(grep '^version' Cargo.toml | cut -d'"' -f2)" "User Commands"
+          .SH NAME
+          webly \- A flexible HTTP client with profile support
+          .SH SYNOPSIS
+          .B webly
+          [\fIOPTIONS\fR] \fIMETHOD\fR \fIURL\fR
+          .SH DESCRIPTION
+          \fBwebly\fP is a flexible HTTP client that supports configuration profiles and various authentication methods.
+          .SH OPTIONS
+          .TP
+          \fB\-p, \-\-profile\fR \fIPROFILE\fR
+          Use the specified profile from ~/.webly/profiles
+          .TP
+          \fB\-H, \-\-header\fR \fIHEADER\fR
+          Add custom HTTP header
+          .TP
+          \fB\-d, \-\-data\fR \fIDATA\fR
+          Send data in request body
+          .TP
+          \fB\-v, \-\-verbose\fR
+          Enable verbose output
+          .TP
+          \fB\-h, \-\-help\fR
+          Show help message
+          .TP
+          \fB\-V, \-\-version\fR
+          Show version information
+          .SH CONFIGURATION
+          Configuration profiles are stored in ~/.webly/profiles in INI format.
+          See /etc/webly/profiles.example for configuration examples.
+          .SH EXAMPLES
+          .TP
+          webly GET https://api.example.com/users
+          .TP
+          webly -p staging POST /api/data -d '{"key": "value"}'
+          .TP
+          webly -H "Authorization: Bearer token" GET /protected
+          .SH AUTHOR
+          Written by Satoshi Iizuka.
+          .SH REPORTING BUGS
+          Report bugs to: https://github.com/samwisely75/webly/issues
+          EOF
+          
+          # Compress man page
+          gzip packaging/usr/share/man/man1/webly.1
+          
+          # Create copyright file
+          cp LICENSE packaging/usr/share/doc/webly/copyright
+          
+          # Create changelog
+          echo "webly ($(grep '^version' Cargo.toml | cut -d'"' -f2)) stable; urgency=medium" > packaging/usr/share/doc/webly/changelog.Debian
+          echo "" >> packaging/usr/share/doc/webly/changelog.Debian
+          echo "  * Release version $(grep '^version' Cargo.toml | cut -d'"' -f2)" >> packaging/usr/share/doc/webly/changelog.Debian
+          echo "" >> packaging/usr/share/doc/webly/changelog.Debian
+          echo " -- Satoshi Iizuka <satoshi.iizuka@elastic.co>  $(date -R)" >> packaging/usr/share/doc/webly/changelog.Debian
+          
+          # Compress changelog
+          gzip packaging/usr/share/doc/webly/changelog.Debian
+
+      - name: Create DEB package
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | cut -d'"' -f2)
+          
+          # Create DEBIAN control file
+          cat > packaging/DEBIAN/control << EOF
+          Package: webly
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Depends: libc6 (>= 2.17)
+          Maintainer: Satoshi Iizuka <satoshi.iizuka@elastic.co>
+          Description: A flexible HTTP client with profile support
+           webly is a flexible HTTP client that supports configuration profiles,
+           various authentication methods, and custom headers. It's designed for
+           developers who need a powerful command-line HTTP client for testing
+           APIs and web services.
+          Homepage: https://github.com/samwisely75/webly
+          EOF
+          
+          # Create postinst script
+          cat > packaging/DEBIAN/postinst << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          # Create webly config directory if it doesn't exist
+          if [ ! -d "/etc/webly" ]; then
+              mkdir -p /etc/webly
+          fi
+          
+          # Copy example profiles if user doesn't have profiles yet
+          if [ ! -f "$HOME/.webly/profiles" ] && [ -f "/etc/webly/profiles.example" ]; then
+              mkdir -p "$HOME/.webly"
+              cp /etc/webly/profiles.example "$HOME/.webly/profiles"
+              echo "Created default profiles at $HOME/.webly/profiles"
+              echo "Edit this file to configure your API endpoints"
+          fi
+          
+          exit 0
+          EOF
+          
+          chmod +x packaging/DEBIAN/postinst
+          
+          # Build DEB package
+          fakeroot dpkg-deb --build packaging webly_${VERSION}_amd64.deb
+          
+          # Verify package
+          dpkg-deb --info webly_${VERSION}_amd64.deb
+          dpkg-deb --contents webly_${VERSION}_amd64.deb
+
+      - name: Upload DEB package
+        uses: actions/upload-artifact@v4
+        with:
+          name: webly-deb-package
+          path: "*.deb"
+          if-no-files-found: error
+
+  test-binaries:
+    needs: build
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            binary: webly-linux-x64
+          - os: macos-latest
+            binary: webly-macos-x64
+          - os: windows-latest
+            binary: webly-windows-x64.exe
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Download binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.binary }}
+
+      - name: Test binary (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          chmod +x ${{ matrix.binary }}
+          ./${{ matrix.binary }} --version
+          ./${{ matrix.binary }} --help
+
+      - name: Test binary (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          ./${{ matrix.binary }} --version
+          ./${{ matrix.binary }} --help
+
+  create-release:
+    needs: [build, build-packages, test-binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from branch name
+        id: extract_version
+        run: |
+          if [[ "${{ github.ref_name }}" =~ ^release/(.+)$ ]]; then
+            VERSION=${BASH_REMATCH[1]}
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "tag_name=v${VERSION}" >> $GITHUB_OUTPUT
+            echo "Extracted version: ${VERSION}"
+          else
+            echo "Error: Could not extract version from branch name: ${{ github.ref_name }}"
+            exit 1
+          fi
+
+      - name: Create and push release tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          TAG_NAME="${{ steps.extract_version.outputs.tag_name }}"
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          RELEASE_BRANCH="release/$VERSION"
+          echo "Processing tag: $TAG_NAME"
+          echo "Processing release branch: $RELEASE_BRANCH"
+          
+          # Check if tag exists locally and delete it
+          if git tag -l | grep -q "^${TAG_NAME}$"; then
+            echo "Local tag $TAG_NAME exists, deleting it..."
+            git tag -d "$TAG_NAME"
+          fi
+          
+          # Check if tag exists on remote and delete it
+          if git ls-remote --tags origin | grep -q "refs/tags/${TAG_NAME}$"; then
+            echo "Remote tag $TAG_NAME exists, deleting it..."
+            git push origin ":refs/tags/$TAG_NAME"
+          fi
+          
+          # Create and push the tag
+          git tag "$TAG_NAME"
+          git push origin "$TAG_NAME"
+          echo "Created and pushed tag: $TAG_NAME"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -name "webly-*" -exec cp {} release-assets/ \;
+          find artifacts -name "*.deb" -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.extract_version.outputs.tag_name }}
+          name: Release ${{ steps.extract_version.outputs.tag_name }}
+          draft: false
+          prerelease: false
+          files: release-assets/*
+          body: |
+            ## What's Changed
+            
+            * Cross-platform release for Windows, macOS, and Linux
+            * Linux packages available in DEB format
+            * Configuration profiles support for API endpoints
+            * Flexible HTTP client with authentication support
+            
+            ## Installation
+            
+            ### Using Pre-built Binaries
+            
+            Download the appropriate binary for your platform from the assets below:
+            
+            ### Windows
+            - `webly-windows-x64.exe` - Windows 64-bit (Intel/AMD)
+            
+            ### macOS
+            - `webly-macos-x64` - macOS Intel (x64)
+            - `webly-macos-arm64` - macOS Apple Silicon (M1/M2)
+            
+            ### Linux
+            - `webly-linux-x64` - Linux 64-bit (Intel/AMD)
+            - `webly-linux-arm64` - Linux ARM64
+            - `webly_*_amd64.deb` - Debian/Ubuntu package
+            
+            ### Using Package Managers (Linux)
+            
+            **Debian/Ubuntu (.deb):**
+            ```bash
+            # Download the .deb file from assets below, then:
+            sudo dpkg -i webly_*_amd64.deb
+            ```
+            
+            ## Configuration
+            
+            WebLy uses configuration profiles stored in `~/.webly/profiles`. The package installation will create an example file at:
+            - Linux: `/etc/webly/profiles.example`
+            - Copy this to `~/.webly/profiles` and customize as needed
+            
+            Example profile configuration:
+            ```ini
+            [default]
+            host = https://api.example.com
+            @content-type = application/json
+            @accept = application/json
+            
+            [local]
+            host = http://localhost:8080
+            @content-type = application/json
+            ```
+            
+            ## Usage
+            
+            ```bash
+            # Basic usage
+            webly GET https://api.example.com/users
+            
+            # Using a profile
+            webly -p local GET /api/data
+            
+            # With custom headers
+            webly -H "Authorization: Bearer token" GET /protected
+            
+            # POST with data
+            webly POST /api/data -d '{"key": "value"}'
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-crates-io:
+    name: Publish to Crates.io
+    runs-on: ubuntu-latest
+    needs: create-release
+    if: false  # Disable for now - enable when ready to publish
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Publish to crates.io
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+
+  merge-to-main:
+    name: Merge Release to Main
+    runs-on: ubuntu-latest
+    needs: [create-release, build, build-packages, test-binaries]
+    if: startsWith(github.ref, 'refs/heads/release/')
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history for merge
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Configure git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Merge release to main
+      run: |
+        # Determine the source branch
+        SOURCE_BRANCH=${GITHUB_REF#refs/heads/}
+        echo "Branch triggered: merging from $SOURCE_BRANCH"
+        
+        # Switch to main and merge
+        git checkout main
+        git pull origin main
+        
+        # Check if the release branch/tag is already merged
+        if git merge-base --is-ancestor ${{ github.sha }} HEAD; then
+          echo "Changes already merged into main"
+        else
+          echo "Merging $SOURCE_BRANCH to main..."
+          git merge --no-ff ${{ github.sha }} -m "Merge release ${{ github.ref_name }} to main - All release artifacts and tests passed"
+          
+          # Push to main
+          git push origin main
+          echo "✅ Successfully merged release to main"
+        fi
+
+    - name: Update develop branch
+      run: |
+        # Also merge any release changes back to develop to keep it up to date
+        git checkout develop
+        git pull origin develop
+        
+        # Check if already merged
+        if git merge-base --is-ancestor ${{ github.sha }} HEAD; then
+          echo "Changes already in develop"
+        else
+          echo "Merging release changes back to develop..."
+          git merge --no-ff ${{ github.sha }} -m "Merge release ${{ github.ref_name }} back to develop"
+          git push origin develop
+          echo "✅ Successfully updated develop branch"
+        fi
+
+    - name: Clean up release branch
+      if: startsWith(github.ref, 'refs/heads/release/')
+      run: |
+        # Delete the release branch after successful merge
+        RELEASE_BRANCH=${GITHUB_REF#refs/heads/}
+        echo "Deleting release branch: $RELEASE_BRANCH"
+        
+        # Try to delete the remote branch
+        if git ls-remote --heads origin | grep -q "refs/heads/$RELEASE_BRANCH"; then
+          echo "Attempting to delete remote branch: refs/heads/$RELEASE_BRANCH"
+          git push origin --delete "$RELEASE_BRANCH" || {
+            echo "Standard delete failed, trying alternative syntax..."
+            git push origin ":refs/heads/$RELEASE_BRANCH" || {
+              echo "⚠️  Could not delete remote branch, may already be deleted"
+            }
+          }
+        else
+          echo "Remote branch $RELEASE_BRANCH not found, may already be deleted"
+        fi
+        
+        echo "✅ Cleaned up release branch"
