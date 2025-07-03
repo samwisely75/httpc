@@ -459,11 +459,70 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  publish-homebrew:
+    name: Publish to Homebrew
+    runs-on: macos-latest
+    needs: create-release
+    steps:
+      - name: Extract version from ref
+        id: extract_version
+        run: |
+          if [[ "${{ github.ref_name }}" =~ ^release/(.+)$ ]]; then
+            VERSION=${BASH_REMATCH[1]}
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "Error: Could not extract version from branch name: ${{ github.ref_name }}"
+            exit 1
+          fi
+
+      - name: Checkout homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: samwisely75/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula
+        working-directory: homebrew-tap
+        run: |
+          VERSION=${{ steps.extract_version.outputs.version }}
+          TAG="v${VERSION}"
+          
+          # Calculate SHA256 from the release tarball
+          SHA256=$(curl -L https://github.com/samwisely75/webly/archive/refs/tags/${TAG}.tar.gz | sha256sum | cut -d ' ' -f 1)
+          
+          # Create or update the formula
+          cat > Formula/webly.rb << EOF
+          class Webly < Formula
+            desc "A flexible HTTP client with profile support"
+            homepage "https://github.com/samwisely75/webly"
+            url "https://github.com/samwisely75/webly/archive/refs/tags/${TAG}.tar.gz"
+            sha256 "${SHA256}"
+            license "MIT"
+          
+            depends_on "rust" => :build
+          
+            def install
+              system "cargo", "install", *std_cargo_args
+            end
+          
+            test do
+              assert_match "webly #{VERSION}", shell_output("#{bin}/webly --version")
+            end
+          end
+          EOF
+          
+          # Commit and push the changes
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/webly.rb
+          git commit -m "webly ${VERSION}"
+          git push
+
   publish-crates-io:
     name: Publish to Crates.io
     runs-on: ubuntu-latest
     needs: create-release
-    if: false  # Disable for now - enable when ready to publish
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
