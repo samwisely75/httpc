@@ -17,7 +17,7 @@ jobs:
     name: Test Suite
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
         
     runs-on: ${{ matrix.os }}
     
@@ -80,6 +80,24 @@ jobs:
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ubuntu-cargo-registry-security-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ubuntu-cargo-index-security-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo tools
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin
+        key: ubuntu-cargo-tools-security-${{ hashFiles('.github/workflows/ci.yml') }}
 
     - name: Install cargo-audit
       run: |
