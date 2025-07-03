@@ -313,8 +313,8 @@ jobs:
       - name: Test binary (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          ./${{ matrix.binary }}.exe --version
-          ./${{ matrix.binary }}.exe --help
+          .\${{ matrix.binary }}.exe --version
+          .\${{ matrix.binary }}.exe --help
 
   create-release:
     needs: [build, build-packages, test-binaries]
