@@ -10,21 +10,21 @@ use crate::url::{Endpoint, Url, UrlPath};
 #[command(version, about, long_about = None)]
 struct ClapArgs {
     /// Method
-    /// Required. A HTTP method text that must be one of the ones defined in RFC 7231.
-    /// All letter will be transformed to upper case.
+    /// Optional. A HTTP method text that must be one of the ones defined in RFC 7231.
+    /// All letter will be transformed to upper case. If omitted, interactive mode is enabled.
     #[clap(
         help = "HTTP method (GET/POST/PUT/DELETE/HEAD etc.)",
         value_parser = OsStringValueParser::new().map(|s| s.to_str().unwrap().to_uppercase() as String),
     )]
-    method: String,
+    method: Option<String>,
 
     /// URL
-    /// Required. String will be translated into Url object.
+    /// Optional. String will be translated into Url object. If omitted, interactive mode is enabled.
     #[clap(
         value_parser = OsStringValueParser::new().map(|s| Url::parse(s.to_str().unwrap())),
         help = "Absolute or relative URL (profile must be configured for relative)"
     )]
-    url: Url,
+    url: Option<Url>,
 
     /// Body
     /// Optional. Body text to send with the request.
@@ -99,8 +99,8 @@ struct ClapArgs {
 
 #[derive(Debug, Clone)]
 pub struct CommandLineArgs {
-    method: String,
-    url: Url,
+    method: Option<String>,
+    url: Option<Url>,
     body: Option<String>,
     #[allow(dead_code)] // Used by profile() method
     profile: String,
@@ -173,12 +173,14 @@ impl CommandLineArgs {
 
     #[allow(dead_code)]
     pub fn merge_req(&mut self, other: &dyn HttpRequestArgs) -> &mut Self {
-        if other.url_path().is_some() {
-            self.url.set_path(other.url_path().unwrap());
+        if let Some(url) = &mut self.url {
+            if other.url_path().is_some() {
+                url.set_path(other.url_path().unwrap());
+            }
         }
 
         if other.method().is_some() {
-            self.method = other.method().unwrap().to_string();
+            self.method = Some(other.method().unwrap().to_string());
         }
 
         if other.body().is_some() {
@@ -203,15 +205,20 @@ impl CommandLineArgs {
     pub fn verbose(&self) -> bool {
         self.verbose
     }
+
+    #[allow(dead_code)]
+    pub fn is_interactive(&self) -> bool {
+        self.method.is_none() && self.url.is_none()
+    }
 }
 
 impl HttpRequestArgs for CommandLineArgs {
     fn method(&self) -> Option<&String> {
-        Some(&self.method)
+        self.method.as_ref()
     }
 
     fn url_path(&self) -> Option<&UrlPath> {
-        self.url.to_url_path()
+        self.url.as_ref().and_then(|url| url.to_url_path())
     }
 
     fn body(&self) -> Option<&String> {
@@ -245,7 +252,7 @@ impl HttpConnectionProfile for CommandLineArgs {
     }
 
     fn server(&self) -> Option<&Endpoint> {
-        self.url.to_endpoint()
+        self.url.as_ref().and_then(|url| url.to_endpoint())
     }
 
     fn proxy(&self) -> Option<&Endpoint> {
@@ -407,8 +414,8 @@ mod test {
             "overridden-value"
         );
 
-        assert_eq!(cmd_args.url.path(), Some(&"/new/path".to_string()));
-        assert_eq!(cmd_args.url.query(), Some(&"query=test".to_string()));
+        assert_eq!(cmd_args.url.as_ref().unwrap().path(), Some(&"/new/path".to_string()));
+        assert_eq!(cmd_args.url.as_ref().unwrap().query(), Some(&"query=test".to_string()));
     }
 
     #[test]
@@ -433,7 +440,7 @@ mod test {
         // Check that only specified values were overridden
         assert_eq!(cmd_args.method().unwrap(), "GET"); // Original method preserved
         assert_eq!(cmd_args.body().unwrap(), "new body"); // Body overridden
-        assert_eq!(cmd_args.url.path(), Some(&"/path".to_string())); // Original path preserved
+        assert_eq!(cmd_args.url.as_ref().unwrap().path(), Some(&"/path".to_string())); // Original path preserved
     }
 
     #[test]
