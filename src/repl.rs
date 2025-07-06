@@ -81,7 +81,7 @@ impl Repl {
 
     fn print_welcome(&self) {
         println!("{}", "Welcome to webly interactive mode!".green().bold());
-        println!("Type {} for help, {} to exit.", ".help".cyan(), ".exit".cyan());
+        println!("Type {} for help, {} to exit.", "!help".cyan(), "!exit".cyan());
         println!("Enter HTTP commands like: {} {}", 
                  "GET".yellow(), 
                  "/api/users".blue());
@@ -102,7 +102,7 @@ impl Repl {
             return Ok(Command::Empty);
         }
 
-        if line.starts_with('.') {
+        if line.starts_with('!') {
             return Ok(Command::Special(self.parse_special_command(line)?));
         }
 
@@ -113,30 +113,30 @@ impl Repl {
         let parts: Vec<&str> = line.split_whitespace().collect();
         
         match parts[0] {
-            ".help" | ".h" => Ok(SpecialCommand::Help),
-            ".exit" | ".quit" | ".q" => Ok(SpecialCommand::Exit),
-            ".clear" | ".c" => Ok(SpecialCommand::Clear),
-            ".headers" => Ok(SpecialCommand::ShowHeaders),
-            ".set-header" | ".set" => {
+            "!help" | "!h" => Ok(SpecialCommand::Help),
+            "!exit" | "!quit" | "!q" => Ok(SpecialCommand::Exit),
+            "!clear" | "!c" => Ok(SpecialCommand::Clear),
+            "!headers" => Ok(SpecialCommand::ShowHeaders),
+            "!set-header" | "!set" => {
                 if parts.len() < 3 {
-                    anyhow::bail!("Usage: .set-header <name> <value>");
+                    anyhow::bail!("Usage: !set-header <name> <value>");
                 }
                 Ok(SpecialCommand::SetHeader {
                     name: parts[1].to_string(),
                     value: parts[2..].join(" "),
                 })
             }
-            ".remove-header" | ".rm" => {
+            "!remove-header" | "!rm" => {
                 if parts.len() < 2 {
-                    anyhow::bail!("Usage: .remove-header <name>");
+                    anyhow::bail!("Usage: !remove-header <name>");
                 }
                 Ok(SpecialCommand::RemoveHeader {
                     name: parts[1].to_string(),
                 })
             }
-            ".profile" => {
+            "!profile" => {
                 if parts.len() < 2 {
-                    anyhow::bail!("Usage: .profile <name>");
+                    anyhow::bail!("Usage: !profile <name>");
                 }
                 Ok(SpecialCommand::SwitchProfile {
                     name: parts[1].to_string(),
@@ -310,12 +310,12 @@ impl Repl {
         println!("  {} {}      - Make a DELETE request", "DELETE".yellow(), "/api/users/1".blue());
         println!();
         println!("{}", "Special Commands:".cyan().bold());
-        println!("  {}                    - Show this help", ".help".yellow());
-        println!("  {}                    - Exit webly", ".exit".yellow());
-        println!("  {}                   - Clear screen", ".clear".yellow());
-        println!("  {}                 - Show session headers", ".headers".yellow());
-        println!("  {} {} {}  - Set a session header", ".set-header".yellow(), "name".blue(), "value".blue());
-        println!("  {} {}     - Remove a session header", ".remove-header".yellow(), "name".blue());
+        println!("  {}                    - Show this help", "!help".yellow());
+        println!("  {}                    - Exit webly", "!exit".yellow());
+        println!("  {}                   - Clear screen", "!clear".yellow());
+        println!("  {}                 - Show session headers", "!headers".yellow());
+        println!("  {} {} {}  - Set a session header", "!set-header".yellow(), "name".blue(), "value".blue());
+        println!("  {} {}     - Remove a session header", "!remove-header".yellow(), "name".blue());
         println!();
         println!("{}", "Tips:".cyan().bold());
         println!("  - For POST/PUT/PATCH without inline body, press Enter to enter multi-line mode");
