@@ -94,7 +94,7 @@ async fn run_interactive_mode(cmd_args: &CommandLineArgs) -> Result<()> {
     tracing::debug!("Merged profile: {:?}", profile);
 
     // Create and run the REPL
-    let mut repl = Repl::new(profile)?;
+    let mut repl = Repl::new(profile, cmd_args.verbose())?;
     repl.run().await
 }
 

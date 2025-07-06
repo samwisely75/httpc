@@ -15,6 +15,7 @@ pub struct Repl {
     profile: IniProfile,
     client: HttpClient,
     session_headers: HashMap<String, String>,
+    verbose: bool,
 }
 
 #[derive(Debug)]
@@ -41,10 +42,11 @@ pub enum SpecialCommand {
     SetHeader { name: String, value: String },
     RemoveHeader { name: String },
     SwitchProfile { name: String },
+    Verbose,
 }
 
 impl Repl {
-    pub fn new(profile: IniProfile) -> Result<Self> {
+    pub fn new(profile: IniProfile, verbose: bool) -> Result<Self> {
         let editor = DefaultEditor::new().context("Failed to create line editor")?;
         let client = HttpClient::new(&profile)?;
         
@@ -53,6 +55,7 @@ impl Repl {
             profile,
             client,
             session_headers: HashMap::new(),
+            verbose,
         })
     }
 
@@ -117,6 +120,7 @@ impl Repl {
             "!exit" | "!quit" | "!q" => Ok(SpecialCommand::Exit),
             "!clear" | "!c" => Ok(SpecialCommand::Clear),
             "!headers" => Ok(SpecialCommand::ShowHeaders),
+            "!verbose" | "!v" => Ok(SpecialCommand::Verbose),
             "!set-header" | "!set" => {
                 if parts.len() < 3 {
                     anyhow::bail!("Usage: !set-header <name> <value>");
@@ -231,19 +235,29 @@ impl Repl {
             "red"
         };
         
-        println!("{} {} {} ({}ms)", 
-                 "HTTP".cyan().bold(),
-                 response.status().as_u16().to_string().color(status_color).bold(),
-                 response.status().canonical_reason().unwrap_or(""),
-                 duration.as_millis());
+        if self.verbose {
+            println!("{} {} {} ({}ms)", 
+                     "HTTP".cyan().bold(),
+                     response.status().as_u16().to_string().color(status_color).bold(),
+                     response.status().canonical_reason().unwrap_or(""),
+                     duration.as_millis());
 
-        // Print headers if verbose or if there are interesting ones
-        if !response.headers().is_empty() {
-            println!("{}", "Headers:".cyan());
-            for (name, value) in response.headers() {
-                println!("  {}: {}", 
-                         name.as_str().blue(),
-                         value.to_str().unwrap_or("<invalid>"));
+            // Print headers in verbose mode
+            if !response.headers().is_empty() {
+                println!("{}", "Headers:".cyan());
+                for (name, value) in response.headers() {
+                    println!("  {}: {}", 
+                             name.as_str().blue(),
+                             value.to_str().unwrap_or("<invalid>"));
+                }
+            }
+        } else {
+            // In non-verbose mode, only show status if it's not successful
+            if !response.status().is_success() {
+                println!("{} {} {}", 
+                         "HTTP".cyan().bold(),
+                         response.status().as_u16().to_string().color(status_color).bold(),
+                         response.status().canonical_reason().unwrap_or(""));
             }
         }
 
@@ -296,6 +310,11 @@ impl Repl {
             SpecialCommand::SwitchProfile { name } => {
                 println!("{}: Profile switching to '{}' not implemented yet.", "Info".yellow(), name);
             }
+            SpecialCommand::Verbose => {
+                self.verbose = !self.verbose;
+                let status = if self.verbose { "enabled" } else { "disabled" };
+                println!("{}: Verbose mode {}", "Info".cyan(), status.yellow());
+            }
         }
         Ok(())
     }
@@ -316,6 +335,7 @@ impl Repl {
         println!("  {}                 - Show session headers", "!headers".yellow());
         println!("  {} {} {}  - Set a session header", "!set-header".yellow(), "name".blue(), "value".blue());
         println!("  {} {}     - Remove a session header", "!remove-header".yellow(), "name".blue());
+        println!("  {}                 - Toggle verbose mode", "!verbose".yellow());
         println!();
         println!("{}", "Tips:".cyan().bold());
         println!("  - For POST/PUT/PATCH without inline body, press Enter to enter multi-line mode");
