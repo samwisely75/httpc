@@ -13,6 +13,7 @@ use crate::url::{Url, UrlPath};
 pub struct Repl {
     editor: DefaultEditor,
     profile: IniProfile,
+    client: HttpClient,
     session_headers: HashMap<String, String>,
 }
 
@@ -45,10 +46,12 @@ pub enum SpecialCommand {
 impl Repl {
     pub fn new(profile: IniProfile) -> Result<Self> {
         let editor = DefaultEditor::new().context("Failed to create line editor")?;
+        let client = HttpClient::new(&profile)?;
         
         Ok(Self {
             editor,
             profile,
+            client,
             session_headers: HashMap::new(),
         })
     }
@@ -213,12 +216,9 @@ impl Repl {
             anyhow::bail!("Relative URL specified but no server configured in profile. Use absolute URL or configure a profile with server endpoint.");
         }
         
-        // Create HTTP client for this request
-        let client = HttpClient::new(&self.profile)?;
-        
         let start_time = std::time::Instant::now();
         
-        let response = client.request(&cmd).await?;
+        let response = self.client.request(&cmd).await?;
         
         let duration = start_time.elapsed();
         
