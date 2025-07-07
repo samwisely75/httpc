@@ -3,7 +3,7 @@ use std::io::{self, Write, IsTerminal};
 
 use anyhow::{Context, Result};
 use colored::*;
-use rustyline::DefaultEditor;
+use rustyline::{DefaultEditor, error::ReadlineError};
 use serde_json;
 
 use crate::http::{HttpClient, HttpConnectionProfile, HttpRequestArgs};
@@ -98,6 +98,7 @@ impl Repl {
     fn print_welcome(&self) {
         println!("{}", "Welcome to webly interactive mode!".green().bold());
         println!("Type {} for help, {} to exit.", "!help".cyan(), "!exit".cyan());
+        println!("Press {} to exit anytime.", "Ctrl+C".cyan());
         println!("Enter HTTP commands like: {} {}", 
                  "GET".yellow(), 
                  "/api/users".blue());
@@ -110,10 +111,25 @@ impl Repl {
         let line = if io::stdin().is_terminal() {
             // Interactive mode - use rustyline for history and editing
             let prompt = format!("{} ", "webly>".green().bold());
-            let line = self.editor.readline(&prompt)
-                .context("Failed to read input")?;
-            let _ = self.editor.add_history_entry(line.as_str());
-            line
+            match self.editor.readline(&prompt) {
+                Ok(line) => {
+                    let _ = self.editor.add_history_entry(line.as_str());
+                    line
+                }
+                Err(ReadlineError::Interrupted) => {
+                    // Ctrl+C pressed
+                    println!("\n{}", "Goodbye!".green());
+                    std::process::exit(0);
+                }
+                Err(ReadlineError::Eof) => {
+                    // Ctrl+D pressed
+                    println!("\n{}", "Goodbye!".green());
+                    std::process::exit(0);
+                }
+                Err(e) => {
+                    anyhow::bail!("Failed to read input: {}", e);
+                }
+            }
         } else {
             // Non-interactive mode - read from stdin directly
             let mut line = String::new();
