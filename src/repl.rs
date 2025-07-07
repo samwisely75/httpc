@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{self, Write};
+use std::io::{self, Write, IsTerminal};
 
 use anyhow::{Context, Result};
 use colored::*;
@@ -60,7 +60,10 @@ impl Repl {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        self.print_welcome();
+        // Only show welcome message in interactive mode
+        if io::stdin().is_terminal() {
+            self.print_welcome();
+        }
         
         loop {
             match self.read_command() {
@@ -76,10 +79,20 @@ impl Repl {
                 }
                 Ok(Command::Empty) => continue,
                 Err(e) => {
+                    // Handle EOF gracefully in non-interactive mode
+                    if !io::stdin().is_terminal() && e.to_string() == "EOF" {
+                        break;
+                    }
                     eprintln!("{}: {}", "Error".red().bold(), e);
+                    // Exit on any error in non-interactive mode
+                    if !io::stdin().is_terminal() {
+                        break;
+                    }
                 }
             }
         }
+        
+        Ok(())
     }
 
     fn print_welcome(&self) {
@@ -94,11 +107,22 @@ impl Repl {
     }
 
     fn read_command(&mut self) -> Result<Command> {
-        let prompt = format!("{} ", "webly>".green().bold());
-        let line = self.editor.readline(&prompt)
-            .context("Failed to read input")?;
-
-        let _ = self.editor.add_history_entry(line.as_str());
+        let line = if io::stdin().is_terminal() {
+            // Interactive mode - use rustyline for history and editing
+            let prompt = format!("{} ", "webly>".green().bold());
+            let line = self.editor.readline(&prompt)
+                .context("Failed to read input")?;
+            let _ = self.editor.add_history_entry(line.as_str());
+            line
+        } else {
+            // Non-interactive mode - read from stdin directly
+            let mut line = String::new();
+            match io::stdin().read_line(&mut line) {
+                Ok(0) => anyhow::bail!("EOF"),
+                Ok(_) => line,
+                Err(e) => anyhow::bail!("Failed to read input: {}", e),
+            }
+        };
 
         let line = line.trim();
         if line.is_empty() {
