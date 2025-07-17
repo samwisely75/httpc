@@ -124,7 +124,7 @@ jobs:
       - name: Install packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm alien fakeroot
+          sudo apt-get install -y rpm alien fakeroot gzip
 
       - name: Setup package structure
         run: |
@@ -143,7 +143,7 @@ jobs:
           # Create profiles template
           cat > packaging/etc/httpc/profiles.example << 'EOF'
           # httpc Configuration Profiles
-          # Copy this file to ~/.httpc/profiles and customize as needed
+          # Copy this file to ~/.httpc/profile and customize as needed
 
           [default]
           host = https://api.example.com
@@ -177,7 +177,7 @@ jobs:
           .SH OPTIONS
           .TP
           \fB\-p, \-\-profile\fR \fIPROFILE\fR
-          Use the specified profile from ~/.httpc/profiles
+          Use the specified profile from ~/.httpc/profile
           .TP
           \fB\-H, \-\-header\fR \fIHEADER\fR
           Add custom HTTP header
@@ -194,7 +194,7 @@ jobs:
           \fB\-V, \-\-version\fR
           Show version information
           .SH CONFIGURATION
-          Configuration profiles are stored in ~/.httpc/profiles in INI format.
+          Configuration profiles are stored in ~/.httpc/profile in INI format.
           See /etc/httpc/profiles.example for configuration examples.
           .SH EXAMPLES
           .TP
@@ -256,12 +256,19 @@ jobs:
               mkdir -p /etc/httpc
           fi
           
-          # Copy example profiles if user doesn't have profiles yet
-          if [ ! -f "$HOME/.httpc/profiles" ] && [ -f "/etc/httpc/profiles.example" ]; then
-              mkdir -p "$HOME/.httpc"
-              cp /etc/httpc/profiles.example "$HOME/.httpc/profiles"
-              echo "Created default profiles at $HOME/.httpc/profiles"
-              echo "Edit this file to configure your API endpoints"
+          # Check if user has a profile configuration
+          if [ ! -f "$HOME/.httpc/profile" ]; then
+              echo "================================================================"
+              echo "httpc has been installed successfully!"
+              echo ""
+              echo "To get started, you need to create a profile configuration:"
+              echo "1. Create the config directory: mkdir -p $HOME/.httpc"
+              echo "2. Copy the example: cp /etc/httpc/profiles.example $HOME/.httpc/profile"
+              echo "3. Edit the profile to configure your API endpoints"
+              echo ""
+              echo "For more information, see the README.md at:"
+              echo "https://github.com/samwisely75/httpc"
+              echo "================================================================"
           fi
           
           exit 0
@@ -354,7 +361,7 @@ jobs:
           .SH OPTIONS
           .TP
           \fB\-p, \-\-profile\fR \fIPROFILE\fR
-          Use the specified profile from ~/.httpc/profiles
+          Use the specified profile from ~/.httpc/profile
           .TP
           \fB\-H, \-\-header\fR \fIHEADER\fR
           Add custom HTTP header
@@ -371,7 +378,7 @@ jobs:
           \fB\-V, \-\-version\fR
           Show version information
           .SH CONFIGURATION
-          Configuration profiles are stored in ~/.httpc/profiles in INI format.
+          Configuration profiles are stored in ~/.httpc/profile in INI format.
           See %{_sysconfdir}/httpc/profiles.example for configuration examples.
           .SH EXAMPLES
           .TP
@@ -401,12 +408,19 @@ jobs:
               mkdir -p /etc/httpc
           fi
           
-          # Copy example profiles if user doesn't have profiles yet
-          if [ ! -f "\$HOME/.httpc/profiles" ] && [ -f "/etc/httpc/profiles.example" ]; then
-              mkdir -p "\$HOME/.httpc"
-              cp /etc/httpc/profiles.example "\$HOME/.httpc/profiles"
-              echo "Created default profiles at \$HOME/.httpc/profiles"
-              echo "Edit this file to configure your API endpoints"
+          # Check if user has a profile configuration
+          if [ ! -f "\$HOME/.httpc/profile" ]; then
+              echo "================================================================"
+              echo "httpc has been installed successfully!"
+              echo ""
+              echo "To get started, you need to create a profile configuration:"
+              echo "1. Create the config directory: mkdir -p \$HOME/.httpc"
+              echo "2. Copy the example: cp /etc/httpc/profiles.example \$HOME/.httpc/profile"
+              echo "3. Edit the profile to configure your API endpoints"
+              echo ""
+              echo "For more information, see the README.md at:"
+              echo "https://github.com/samwisely75/httpc"
+              echo "================================================================"
           fi
           
           %changelog
@@ -591,9 +605,9 @@ jobs:
             
             ## Configuration
             
-            httpc uses configuration profiles stored in `~/.httpc/profiles`. The package installation will create an example file at:
+            httpc uses configuration profiles stored in `~/.httpc/profile`. The package installation will create an example file at:
             - Linux: `/etc/httpc/profiles.example`
-            - Copy this to `~/.httpc/profiles` and customize as needed
+            - Copy this to `~/.httpc/profile` and customize as needed
             
             Example profile configuration:
             ```ini
