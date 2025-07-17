@@ -251,7 +251,7 @@ jobs:
       shell: bash
       run: |
         if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          ls -la target/${{ matrix.target }}/release/webly.exe
+          ls -la target/${{ matrix.target }}/release/httpc.exe
         else
-          ls -la target/${{ matrix.target }}/release/webly
+          ls -la target/${{ matrix.target }}/release/httpc
         fi

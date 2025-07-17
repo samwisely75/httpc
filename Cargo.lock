@@ -491,6 +491,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
+name = "httpc"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "clap",
+ "encoding_rs",
+ "flate2",
+ "regex",
+ "reqwest",
+ "rust-ini",
+ "serde",
+ "serde_json",
+ "shellexpand",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "zstd",
+]
+
+[[package]]
 name = "hyper"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1798,28 +1820,6 @@ checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "webly"
-version = "0.1.16"
-dependencies = [
- "anyhow",
- "bytes",
- "clap",
- "encoding_rs",
- "flate2",
- "regex",
- "reqwest",
- "rust-ini",
- "serde",
- "serde_json",
- "shellexpand",
- "tempfile",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "zstd",
 ]
 
 [[package]]
