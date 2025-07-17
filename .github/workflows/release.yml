@@ -124,10 +124,15 @@ jobs:
       - name: Install packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm alien fakeroot gzip
+          sudo apt-get install -y rpmdevtools fakeroot gzip
           
-          # Verify gzip is available
-          which gzip
+          # Verify tools are available
+          which rpmbuild || echo "rpmbuild not found"
+          which fakeroot || echo "fakeroot not found"
+          which gzip || echo "gzip not found"
+          
+          # Show versions
+          rpmbuild --version
           gzip --version
 
       - name: Setup package structure
@@ -321,7 +326,7 @@ jobs:
           Source0:        %{name}-%{version}.tar.gz
           
           BuildRequires:  gzip
-          Requires:       glibc >= 2.17, gzip
+          Requires:       glibc >= 2.17
           
           %description
           httpc is a flexible HTTP client that supports configuration profiles,
@@ -433,10 +438,7 @@ jobs:
           EOF
           
           # Build RPM
-          echo "Checking if gzip is available..."
-          which gzip || echo "gzip not found in PATH"
-          gzip --version || echo "gzip version check failed"
-          
+          echo "Building RPM package..."
           rpmbuild -bb ~/rpmbuild/SPECS/httpc.spec
           
           # Copy RPM to current directory
