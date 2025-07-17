@@ -310,7 +310,7 @@ jobs:
           Source0:        %{name}-%{version}.tar.gz
           
           BuildRequires:  gzip
-          Requires:       glibc >= 2.17
+          Requires:       glibc >= 2.17, gzip
           
           %description
           httpc is a flexible HTTP client that supports configuration profiles,
