@@ -124,7 +124,7 @@ jobs:
       - name: Install packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm rpmbuild alien fakeroot gzip
+          sudo apt-get install -y rpm alien fakeroot gzip
           
           # Verify gzip is available
           which gzip
