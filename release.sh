@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Release script for webly following git flow workflow
+# Release script for httpc following git flow workflow
 # This script automates the entire release process
 #
 # Usage:
@@ -239,9 +239,9 @@ print_success "Release build completed!"
 
 # Step 6: Test the binary
 print_status "Testing the release binary..."
-./target/release/webly GET https://www.swapi.tech/api/people/1 | jq -r .message > /tmp/webly_test_output
+./target/release/httpc GET https://www.swapi.tech/api/people/1 | jq -r .message > /tmp/httpc_test_output
 EXPECTED='ok'
-ACTUAL=$(cat /tmp/webly_test_output)
+ACTUAL=$(cat /tmp/httpc_test_output)
 if [ "$ACTUAL" = "$EXPECTED" ]; then
     print_success "Binary functionality test passed!"
 else
@@ -251,7 +251,7 @@ fi
 
 # Step 7: Run any additional release tests
 print_status "Running additional release validation..."
-./target/release/webly --help > /dev/null
+./target/release/httpc --help > /dev/null
 
 print_success "All release validations passed!"
 
@@ -291,7 +291,7 @@ print_status "5. Merge main back to develop"
 print_status "6. Clean up release branch"
 print_status ""
 print_status "You can monitor the release at:"
-print_status "https://github.com/samwisely75/webly/actions"
+print_status "https://github.com/samwisely75/httpc/actions"
 
 print_success "🚀 Release v$CURRENT_VERSION initiated!"
 print_status "🎯 GitHub Actions will handle the rest automatically!"

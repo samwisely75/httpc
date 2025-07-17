@@ -1,16 +1,16 @@
 use std::process::Command;
 use tempfile::tempdir;
 
-fn webly_binary() -> String {
-    env!("CARGO_BIN_EXE_webly").to_string()
+fn httpc_binary() -> String {
+    env!("CARGO_BIN_EXE_httpc").to_string()
 }
 
 #[test]
 fn test_help_command() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .arg("--help")
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -20,22 +20,22 @@ fn test_help_command() {
 
 #[test]
 fn test_version_command() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .arg("--version")
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("webly"));
+    assert!(stdout.contains("httpc"));
 }
 
 #[test]
 fn test_basic_get_request() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args(["GET", "https://httpbin.org/get"])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -49,13 +49,13 @@ fn test_basic_get_request() {
 
 #[test]
 fn test_post_with_stdin() {
-    let mut cmd = Command::new(webly_binary())
+    let mut cmd = Command::new(httpc_binary())
         .args(["POST", "https://httpbin.org/post"])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
-        .expect("Failed to spawn webly");
+        .expect("Failed to spawn httpc");
 
     if let Some(stdin) = cmd.stdin.as_mut() {
         use std::io::Write;
@@ -79,7 +79,7 @@ fn test_post_with_stdin() {
 #[test]
 fn test_profile_configuration() {
     let temp_dir = tempdir().expect("Failed to create temp dir");
-    let config_path = temp_dir.path().join(".webly");
+    let config_path = temp_dir.path().join(".httpc");
 
     std::fs::write(
         &config_path,
@@ -90,11 +90,11 @@ fn test_profile_configuration() {
     .expect("Failed to write config file");
 
     // Set the config file location via environment variable
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args(["-p", "test", "GET", "/get"])
         .env("HOME", temp_dir.path())
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     // The command should at least parse correctly even if network fails
     if !output.status.success() {
@@ -106,10 +106,10 @@ fn test_profile_configuration() {
 
 #[test]
 fn test_invalid_arguments() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args(["INVALID"])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -118,7 +118,7 @@ fn test_invalid_arguments() {
 
 #[test]
 fn test_custom_headers() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args([
             "GET",
             "https://httpbin.org/get",
@@ -128,7 +128,7 @@ fn test_custom_headers() {
             "Authorization: Bearer token123",
         ])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     // The binary should execute successfully regardless of HTTP status
     assert!(output.status.success(), "Binary execution failed");
@@ -149,7 +149,7 @@ fn test_custom_headers() {
 
 #[test]
 fn test_basic_auth() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args([
             "GET",
             "https://httpbin.org/basic-auth/user/pass",
@@ -159,7 +159,7 @@ fn test_basic_auth() {
             "pass",
         ])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -173,14 +173,14 @@ fn test_basic_auth() {
 
 #[test]
 fn test_verbose_mode() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args([
             "GET",
             "https://httpbin.org/get",
             "-v", // verbose mode
         ])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     if output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -198,10 +198,10 @@ fn test_different_http_methods() {
     let methods = ["GET", "POST", "PUT", "DELETE", "HEAD"];
 
     for method in &methods {
-        let output = Command::new(webly_binary())
+        let output = Command::new(httpc_binary())
             .args([method, "https://httpbin.org/get"])
             .output()
-            .expect("Failed to execute webly");
+            .expect("Failed to execute httpc");
 
         // All methods should be accepted by the CLI parser
         // Network failures are acceptable
@@ -215,10 +215,10 @@ fn test_different_http_methods() {
 
 #[test]
 fn test_invalid_url() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args(["GET", "http://invalid-domain-that-does-not-exist.invalid"])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     // Should fail with DNS resolution error
     assert!(!output.status.success());
@@ -229,7 +229,7 @@ fn test_invalid_url() {
 
 #[test]
 fn test_malformed_headers() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args([
             "GET",
             "https://httpbin.org/get",
@@ -237,7 +237,7 @@ fn test_malformed_headers() {
             "InvalidHeaderNoColon", // Invalid header format
         ])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     // Should fail with malformed header
     assert!(!output.status.success());
@@ -247,10 +247,10 @@ fn test_malformed_headers() {
 
 #[test]
 fn test_empty_body_post() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args(["POST", "https://httpbin.org/post", ""])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     // Empty body should be acceptable
     if output.status.success() {
@@ -266,9 +266,9 @@ fn test_empty_body_post() {
 #[test]
 fn test_missing_required_arguments() {
     // Test with no arguments
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -277,10 +277,10 @@ fn test_missing_required_arguments() {
 
 #[test]
 fn test_only_method_argument() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args(["GET"])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -289,10 +289,10 @@ fn test_only_method_argument() {
 
 #[test]
 fn test_ipv4_address() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args(["GET", "http://127.0.0.1:8080/test"])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     // Connection will likely fail, but URL parsing should work
     if !output.status.success() {
@@ -304,10 +304,10 @@ fn test_ipv4_address() {
 
 #[test]
 fn test_non_standard_port() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args(["GET", "https://httpbin.org:443/get"])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -321,7 +321,7 @@ fn test_non_standard_port() {
 
 #[test]
 fn test_multiple_headers() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args([
             "GET",
             "https://httpbin.org/get",
@@ -333,7 +333,7 @@ fn test_multiple_headers() {
             "Accept: application/json",
         ])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     // Should handle multiple headers without issues
     if !output.status.success() {
@@ -344,7 +344,7 @@ fn test_multiple_headers() {
 
 #[test]
 fn test_auth_without_password() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args([
             "GET",
             "https://httpbin.org/get",
@@ -353,7 +353,7 @@ fn test_auth_without_password() {
             // No password provided
         ])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     // Should work with just username (password can be empty)
     if output.status.success() || !output.status.success() {
@@ -369,10 +369,10 @@ fn test_very_long_url() {
     let long_path = "/".to_string() + &"very-long-path-segment/".repeat(50);
     let long_url = format!("https://httpbin.org{long_path}");
 
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args(["GET", &long_url])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     // Should handle long URLs
     if !output.status.success() {
@@ -384,7 +384,7 @@ fn test_very_long_url() {
 
 #[test]
 fn test_special_characters_in_headers() {
-    let output = Command::new(webly_binary())
+    let output = Command::new(httpc_binary())
         .args([
             "GET",
             "https://httpbin.org/get",
@@ -392,7 +392,7 @@ fn test_special_characters_in_headers() {
             "X-Special-Chars: !@#$%^&*()_+-={}[]|\\:;\"'<>?,./",
         ])
         .output()
-        .expect("Failed to execute webly");
+        .expect("Failed to execute httpc");
 
     // Should handle special characters in header values
     if !output.status.success() {
@@ -407,10 +407,10 @@ fn test_case_insensitive_method() {
     let methods = ["get", "post", "PUT", "Delete", "HEAD"];
 
     for method in &methods {
-        let output = Command::new(webly_binary())
+        let output = Command::new(httpc_binary())
             .args([method, "https://httpbin.org/get"])
             .output()
-            .expect("Failed to execute webly");
+            .expect("Failed to execute httpc");
 
         // Should accept methods in any case
         if !output.status.success() {

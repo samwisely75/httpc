@@ -1,12 +1,12 @@
 [package]
-name = "webly"
+name = "httpc"
 version = "0.1.16"
 authors = ["Sam Wisely <samwisely75@gmail.com>"]
 description = "A lightweight, profile-based HTTP client"
 edition = "2021"
 license = "Elastic-2.0"
-repository = "https://github.com/samwisely75/webly"
-homepage = "https://github.com/samwisely75/webly"
+repository = "https://github.com/samwisely75/httpc"
+homepage = "https://github.com/samwisely75/httpc"
 readme = "README.md"
 keywords = ["http", "client", "cli", "curl", "api"]
 categories = ["command-line-utilities", "web-programming::http-client"]
@@ -20,19 +20,19 @@ depends = "$auto"
 section = "net"
 priority = "optional"
 assets = [
-    ["target/release/webly", "usr/bin/", "755"],
-    ["README.md", "usr/share/doc/webly/", "644"],
+    ["target/release/httpc", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/httpc/", "644"],
 ]
 
 [package.metadata.generate-rpm]
 license = "Elastic-2.0"
 summary = "A lightweight, profile-based HTTP client"
-post_install_script = """echo "Setting up webly..."
-echo "Webly installed successfully!"
-echo "See documentation: https://github.com/samwisely75/webly\""""
+post_install_script = """echo "Setting up httpc..."
+echo "httpc installed successfully!"
+echo "See documentation: https://github.com/samwisely75/httpc\""""
 assets = [
-    { source = "target/release/webly", dest = "/usr/bin/webly", mode = "755" },
-    { source = "README.md", dest = "/usr/share/doc/webly/README.md", mode = "644" },
+    { source = "target/release/httpc", dest = "/usr/bin/httpc", mode = "755" },
+    { source = "README.md", dest = "/usr/share/doc/httpc/README.md", mode = "644" },
 ]
 
 [dependencies]

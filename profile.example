@@ -1,6 +1,6 @@
-# Webly Configuration Profile
+# httpc Configuration Profile
 # This file contains configuration profile for WebLy HTTP client
-# Copy this file to ~/.webly/profile and customize as needed
+# Copy this file to ~/.httpc/profile and customize as needed
 
 [default]
 host = https://api.example.com

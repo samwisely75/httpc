@@ -1,6 +1,6 @@
 # Security and Vulnerability Scanning
 
-This document describes the security and vulnerability scanning setup for the Webly project.
+This document describes the security and vulnerability scanning setup for the httpc project.
 
 ## Current Security Tools
 
@@ -42,7 +42,7 @@ To integrate Snyk when their Rust support improves:
 
 ### Step 2: Add to GitHub Secrets
 
-1. Go to GitHub repository: `https://github.com/samwisely75/webly`
+1. Go to GitHub repository: `https://github.com/samwisely75/httpc`
 2. Navigate to **Settings** → **Secrets and variables** → **Actions**
 3. Click **"New repository secret"**
 4. Add:
