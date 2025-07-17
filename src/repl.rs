@@ -10,6 +10,23 @@ use crate::http::{HttpClient, HttpConnectionProfile, HttpRequestArgs};
 use crate::ini::IniProfile;
 use crate::url::{Url, UrlPath};
 
+// Special command constants
+const CMD_HELP: &str = "!help";
+const CMD_HELP_SHORT: &str = "!h";
+const CMD_EXIT: &str = "!exit";
+const CMD_QUIT: &str = "!quit";
+const CMD_QUIT_SHORT: &str = "!q";
+const CMD_CLEAR: &str = "!clear";
+const CMD_CLEAR_SHORT: &str = "!c";
+const CMD_HEADERS: &str = "!headers";
+const CMD_VERBOSE: &str = "!verbose";
+const CMD_VERBOSE_SHORT: &str = "!v";
+const CMD_SET_HEADER: &str = "!set-header";
+const CMD_SET_HEADER_SHORT: &str = "!set";
+const CMD_REMOVE_HEADER: &str = "!remove-header";
+const CMD_REMOVE_HEADER_SHORT: &str = "!rm";
+const CMD_PROFILE: &str = "!profile";
+
 pub struct Repl {
     editor: DefaultEditor,
     profile: IniProfile,
@@ -97,7 +114,7 @@ impl Repl {
 
     fn print_welcome(&self) {
         println!("{}", "Welcome to webly interactive mode!".green().bold());
-        println!("Type {} for help, {} to exit.", "!help".cyan(), "!exit".cyan());
+        println!("Type {} for help, {} to exit.", CMD_HELP.cyan(), CMD_EXIT.cyan());
         println!("Press {} to exit anytime.", "Ctrl+C".cyan());
         println!("Enter HTTP commands like: {} {}", 
                  "GET".yellow(), 
@@ -156,31 +173,31 @@ impl Repl {
         let parts: Vec<&str> = line.split_whitespace().collect();
         
         match parts[0] {
-            "!help" | "!h" => Ok(SpecialCommand::Help),
-            "!exit" | "!quit" | "!q" => Ok(SpecialCommand::Exit),
-            "!clear" | "!c" => Ok(SpecialCommand::Clear),
-            "!headers" => Ok(SpecialCommand::ShowHeaders),
-            "!verbose" | "!v" => Ok(SpecialCommand::Verbose),
-            "!set-header" | "!set" => {
+            CMD_HELP | CMD_HELP_SHORT => Ok(SpecialCommand::Help),
+            CMD_EXIT | CMD_QUIT | CMD_QUIT_SHORT => Ok(SpecialCommand::Exit),
+            CMD_CLEAR | CMD_CLEAR_SHORT => Ok(SpecialCommand::Clear),
+            CMD_HEADERS => Ok(SpecialCommand::ShowHeaders),
+            CMD_VERBOSE | CMD_VERBOSE_SHORT => Ok(SpecialCommand::Verbose),
+            CMD_SET_HEADER | CMD_SET_HEADER_SHORT => {
                 if parts.len() < 3 {
-                    anyhow::bail!("Usage: !set-header <name> <value>");
+                    anyhow::bail!("Usage: {} <name> <value>", CMD_SET_HEADER);
                 }
                 Ok(SpecialCommand::SetHeader {
                     name: parts[1].to_string(),
                     value: parts[2..].join(" "),
                 })
             }
-            "!remove-header" | "!rm" => {
+            CMD_REMOVE_HEADER | CMD_REMOVE_HEADER_SHORT => {
                 if parts.len() < 2 {
-                    anyhow::bail!("Usage: !remove-header <name>");
+                    anyhow::bail!("Usage: {} <name>", CMD_REMOVE_HEADER);
                 }
                 Ok(SpecialCommand::RemoveHeader {
                     name: parts[1].to_string(),
                 })
             }
-            "!profile" => {
+            CMD_PROFILE => {
                 if parts.len() < 2 {
-                    anyhow::bail!("Usage: !profile <name>");
+                    anyhow::bail!("Usage: {} <name>", CMD_PROFILE);
                 }
                 Ok(SpecialCommand::SwitchProfile {
                     name: parts[1].to_string(),
@@ -369,13 +386,13 @@ impl Repl {
         println!("  {} {}      - Make a DELETE request", "DELETE".yellow(), "/api/users/1".blue());
         println!();
         println!("{}", "Special Commands:".cyan().bold());
-        println!("  {}                    - Show this help", "!help".yellow());
-        println!("  {}                    - Exit webly", "!exit".yellow());
-        println!("  {}                   - Clear screen", "!clear".yellow());
-        println!("  {}                 - Show session headers", "!headers".yellow());
-        println!("  {} {} {}  - Set a session header", "!set-header".yellow(), "name".blue(), "value".blue());
-        println!("  {} {}     - Remove a session header", "!remove-header".yellow(), "name".blue());
-        println!("  {}                 - Toggle verbose mode", "!verbose".yellow());
+        println!("  {}                    - Show this help", CMD_HELP.yellow());
+        println!("  {}                    - Exit webly", CMD_EXIT.yellow());
+        println!("  {}                   - Clear screen", CMD_CLEAR.yellow());
+        println!("  {}                 - Show session headers", CMD_HEADERS.yellow());
+        println!("  {} {} {}  - Set a session header", CMD_SET_HEADER.yellow(), "name".blue(), "value".blue());
+        println!("  {} {}     - Remove a session header", CMD_REMOVE_HEADER.yellow(), "name".blue());
+        println!("  {}                 - Toggle verbose mode", CMD_VERBOSE.yellow());
         println!();
         println!("{}", "Tips:".cyan().bold());
         println!("  - For POST/PUT/PATCH without inline body, press Enter to enter multi-line mode");
