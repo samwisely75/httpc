@@ -44,9 +44,12 @@ fn test_basic_get_request() {
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     // Check if we got a response (success or HTTP error) indicating the request was made
-    let has_response = stdout.contains("httpbin.org") || stdout.contains("{") || 
-                      stderr.contains("200") || stderr.contains("503") || 
-                      stderr.contains("Service Unavailable") || stderr.contains("HTTP");
+    let has_response = stdout.contains("httpbin.org")
+        || stdout.contains("{")
+        || stderr.contains("200")
+        || stderr.contains("503")
+        || stderr.contains("Service Unavailable")
+        || stderr.contains("HTTP");
 
     assert!(
         has_response,
@@ -80,9 +83,12 @@ fn test_post_with_stdin() {
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     // Check if we got a response indicating the request was made
-    let has_response = stdout.contains("httpbin.org") || stdout.contains("{") || 
-                      stderr.contains("200") || stderr.contains("503") || 
-                      stderr.contains("Service Unavailable") || stderr.contains("HTTP");
+    let has_response = stdout.contains("httpbin.org")
+        || stdout.contains("{")
+        || stderr.contains("200")
+        || stderr.contains("503")
+        || stderr.contains("Service Unavailable")
+        || stderr.contains("HTTP");
 
     assert!(
         has_response,
@@ -153,9 +159,12 @@ fn test_custom_headers() {
     // Check if we got a successful response (200 OK) in stdout
     // or an HTTP error in stderr (both indicate the request was made)
     let has_successful_response = stdout.contains("httpbin.org") || stdout.contains("{");
-    let has_http_error = stderr.contains("400") || stderr.contains("401") || stderr.contains("500") || 
-                        stderr.contains("503") || stderr.contains("Service Unavailable") || 
-                        stderr.contains("HTTP");
+    let has_http_error = stderr.contains("400")
+        || stderr.contains("401")
+        || stderr.contains("500")
+        || stderr.contains("503")
+        || stderr.contains("Service Unavailable")
+        || stderr.contains("HTTP");
 
     assert!(
         has_successful_response || has_http_error,
@@ -184,10 +193,14 @@ fn test_basic_auth() {
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     // Check if we got a response indicating the request was made
-    let has_response = stdout.contains("authenticated") || stdout.contains("user") || 
-                      stdout.contains("{") || stderr.contains("200") || 
-                      stderr.contains("401") || stderr.contains("503") || 
-                      stderr.contains("Service Unavailable") || stderr.contains("HTTP");
+    let has_response = stdout.contains("authenticated")
+        || stdout.contains("user")
+        || stdout.contains("{")
+        || stderr.contains("200")
+        || stderr.contains("401")
+        || stderr.contains("503")
+        || stderr.contains("Service Unavailable")
+        || stderr.contains("HTTP");
 
     assert!(
         has_response,
@@ -283,10 +296,13 @@ fn test_empty_body_post() {
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     // Check if we got a response indicating the request was made
-    let has_response = stdout.contains("httpbin.org") || stdout.contains("{") || 
-                      !stdout.is_empty() || stderr.contains("200") || 
-                      stderr.contains("503") || stderr.contains("Service Unavailable") || 
-                      stderr.contains("HTTP");
+    let has_response = stdout.contains("httpbin.org")
+        || stdout.contains("{")
+        || !stdout.is_empty()
+        || stderr.contains("200")
+        || stderr.contains("503")
+        || stderr.contains("Service Unavailable")
+        || stderr.contains("HTTP");
 
     assert!(
         has_response,
@@ -347,9 +363,12 @@ fn test_non_standard_port() {
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     // Check if we got a response indicating the request was made
-    let has_response = stdout.contains("httpbin.org") || stdout.contains("{") || 
-                      stderr.contains("200") || stderr.contains("503") || 
-                      stderr.contains("Service Unavailable") || stderr.contains("HTTP");
+    let has_response = stdout.contains("httpbin.org")
+        || stdout.contains("{")
+        || stderr.contains("200")
+        || stderr.contains("503")
+        || stderr.contains("Service Unavailable")
+        || stderr.contains("HTTP");
 
     assert!(
         has_response,
