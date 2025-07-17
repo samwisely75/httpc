@@ -124,7 +124,11 @@ jobs:
       - name: Install packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm alien fakeroot gzip
+          sudo apt-get install -y rpm rpm-build alien fakeroot gzip
+          
+          # Verify gzip is available
+          which gzip
+          gzip --version
 
       - name: Setup package structure
         run: |
@@ -429,6 +433,10 @@ jobs:
           EOF
           
           # Build RPM
+          echo "Checking if gzip is available..."
+          which gzip || echo "gzip not found in PATH"
+          gzip --version || echo "gzip version check failed"
+          
           rpmbuild -bb ~/rpmbuild/SPECS/httpc.spec
           
           # Copy RPM to current directory
