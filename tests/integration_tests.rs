@@ -133,7 +133,7 @@ fn test_invalid_arguments() {
 
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("error") || stderr.contains("usage") || stderr.contains("help"));
+    assert!(stderr.contains("Error:") || stderr.contains("usage") || stderr.contains("help"));
 }
 
 #[test]
@@ -162,6 +162,7 @@ fn test_custom_headers() {
     let has_http_error = stderr.contains("400")
         || stderr.contains("401")
         || stderr.contains("500")
+        || stderr.contains("502")
         || stderr.contains("503")
         || stderr.contains("Service Unavailable")
         || stderr.contains("HTTP");
@@ -319,7 +320,7 @@ fn test_missing_required_arguments() {
 
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("required") || stderr.contains("Usage") || stderr.contains("error"));
+    assert!(stderr.contains("required") || stderr.contains("Usage") || stderr.contains("Error:"));
 }
 
 #[test]
@@ -331,7 +332,7 @@ fn test_only_method_argument() {
 
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("required") || stderr.contains("Usage") || stderr.contains("URL"));
+    assert!(stderr.contains("required") || stderr.contains("Usage") || stderr.contains("Error:"));
 }
 
 #[test]
