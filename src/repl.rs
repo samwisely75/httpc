@@ -1,10 +1,9 @@
 use std::collections::HashMap;
-use std::io::{self, Write, IsTerminal};
+use std::io::{self, IsTerminal, Write};
 
 use anyhow::{Context, Result};
 use colored::*;
-use rustyline::{DefaultEditor, error::ReadlineError};
-use serde_json;
+use rustyline::{error::ReadlineError, DefaultEditor};
 
 use crate::http::{HttpClient, HttpConnectionProfile, HttpRequestArgs};
 use crate::ini::IniProfile;
@@ -66,7 +65,7 @@ impl Repl {
     pub fn new(profile: IniProfile, verbose: bool) -> Result<Self> {
         let editor = DefaultEditor::new().context("Failed to create line editor")?;
         let client = HttpClient::new(&profile)?;
-        
+
         Ok(Self {
             editor,
             profile,
@@ -81,7 +80,7 @@ impl Repl {
         if io::stdin().is_terminal() {
             self.print_welcome();
         }
-        
+
         loop {
             match self.read_command() {
                 Ok(Command::Http(cmd)) => {
@@ -108,19 +107,27 @@ impl Repl {
                 }
             }
         }
-        
+
         Ok(())
     }
 
     fn print_welcome(&self) {
         println!("{}", "Welcome to webly interactive mode!".green().bold());
-        println!("Type {} for help, {} to exit.", CMD_HELP.cyan(), CMD_EXIT.cyan());
+        println!(
+            "Type {} for help, {} to exit.",
+            CMD_HELP.cyan(),
+            CMD_EXIT.cyan()
+        );
         println!("Press {} to exit anytime.", "Ctrl+C".cyan());
-        println!("Enter HTTP commands like: {} {}", 
-                 "GET".yellow(), 
-                 "/api/users".blue());
-        println!("For requests with body, press {} after the URL to enter body mode.",
-                 "Enter".yellow());
+        println!(
+            "Enter HTTP commands like: {} {}",
+            "GET".yellow(),
+            "/api/users".blue()
+        );
+        println!(
+            "For requests with body, press {} after the URL to enter body mode.",
+            "Enter".yellow()
+        );
         println!();
     }
 
@@ -171,7 +178,7 @@ impl Repl {
 
     fn parse_special_command(&self, line: &str) -> Result<SpecialCommand> {
         let parts: Vec<&str> = line.split_whitespace().collect();
-        
+
         match parts[0] {
             CMD_HELP | CMD_HELP_SHORT => Ok(SpecialCommand::Help),
             CMD_EXIT | CMD_QUIT | CMD_QUIT_SHORT => Ok(SpecialCommand::Exit),
@@ -209,20 +216,20 @@ impl Repl {
 
     fn parse_http_command(&mut self, line: &str) -> Result<Command> {
         let parts: Vec<&str> = line.split_whitespace().collect();
-        
+
         if parts.len() < 2 {
             anyhow::bail!("Usage: <METHOD> <URL> [body]");
         }
 
         let method = parts[0].to_uppercase();
         let url_str = parts[1];
-        
+
         // Parse URL
         let url = Url::parse(url_str);
 
         // Check if this is a method that typically has a body
         let has_body = matches!(method.as_str(), "POST" | "PUT" | "PATCH");
-        
+
         let body = if has_body {
             // Check if body is provided on the same line
             if parts.len() > 2 {
@@ -244,14 +251,17 @@ impl Repl {
     }
 
     fn read_body(&mut self) -> Result<Option<String>> {
-        println!("{}", "Enter body (press Ctrl+D when done, Ctrl+C to cancel):".yellow());
-        
+        println!(
+            "{}",
+            "Enter body (press Ctrl+D when done, Ctrl+C to cancel):".yellow()
+        );
+
         let mut body = String::new();
         loop {
             let prompt = "> ";
             print!("{}", prompt);
             io::stdout().flush()?;
-            
+
             let mut line = String::new();
             match io::stdin().read_line(&mut line) {
                 Ok(0) => break, // EOF (Ctrl+D)
@@ -276,13 +286,13 @@ impl Repl {
         if cmd.url.to_endpoint().is_none() && self.profile.server().is_none() {
             anyhow::bail!("Relative URL specified but no server configured in profile. Use absolute URL or configure a profile with server endpoint.");
         }
-        
+
         let start_time = std::time::Instant::now();
-        
+
         let response = self.client.request(&cmd).await?;
-        
+
         let duration = start_time.elapsed();
-        
+
         // Print status line
         let status_color = if response.status().is_success() {
             "green"
@@ -291,30 +301,46 @@ impl Repl {
         } else {
             "red"
         };
-        
+
         if self.verbose {
-            println!("{} {} {} ({}ms)", 
-                     "HTTP".cyan().bold(),
-                     response.status().as_u16().to_string().color(status_color).bold(),
-                     response.status().canonical_reason().unwrap_or(""),
-                     duration.as_millis());
+            println!(
+                "{} {} {} ({}ms)",
+                "HTTP".cyan().bold(),
+                response
+                    .status()
+                    .as_u16()
+                    .to_string()
+                    .color(status_color)
+                    .bold(),
+                response.status().canonical_reason().unwrap_or(""),
+                duration.as_millis()
+            );
 
             // Print headers in verbose mode
             if !response.headers().is_empty() {
                 println!("{}", "Headers:".cyan());
                 for (name, value) in response.headers() {
-                    println!("  {}: {}", 
-                             name.as_str().blue(),
-                             value.to_str().unwrap_or("<invalid>"));
+                    println!(
+                        "  {}: {}",
+                        name.as_str().blue(),
+                        value.to_str().unwrap_or("<invalid>")
+                    );
                 }
             }
         } else {
             // In non-verbose mode, only show status if it's not successful
             if !response.status().is_success() {
-                println!("{} {} {}", 
-                         "HTTP".cyan().bold(),
-                         response.status().as_u16().to_string().color(status_color).bold(),
-                         response.status().canonical_reason().unwrap_or(""));
+                println!(
+                    "{} {} {}",
+                    "HTTP".cyan().bold(),
+                    response
+                        .status()
+                        .as_u16()
+                        .to_string()
+                        .color(status_color)
+                        .bold(),
+                    response.status().canonical_reason().unwrap_or("")
+                );
             }
         }
 
@@ -353,7 +379,8 @@ impl Repl {
                 }
             }
             SpecialCommand::SetHeader { name, value } => {
-                self.session_headers.insert(name.to_lowercase(), value.clone());
+                self.session_headers
+                    .insert(name.to_lowercase(), value.clone());
                 println!("{}: {} -> {}", "Header set".green(), name.blue(), value);
             }
             SpecialCommand::RemoveHeader { name } => {
@@ -365,7 +392,11 @@ impl Repl {
                 }
             }
             SpecialCommand::SwitchProfile { name } => {
-                println!("{}: Profile switching to '{}' not implemented yet.", "Info".yellow(), name);
+                println!(
+                    "{}: Profile switching to '{}' not implemented yet.",
+                    "Info".yellow(),
+                    name
+                );
             }
             SpecialCommand::Verbose => {
                 self.verbose = !self.verbose;
@@ -380,22 +411,58 @@ impl Repl {
         println!("{}", "webly Interactive Mode Help".green().bold());
         println!();
         println!("{}", "HTTP Commands:".cyan().bold());
-        println!("  {} {}           - Make a GET request", "GET".yellow(), "/api/users".blue());
-        println!("  {} {}        - Make a POST request", "POST".yellow(), "/api/users".blue());
-        println!("  {} {}         - Make a PUT request", "PUT".yellow(), "/api/users/1".blue());
-        println!("  {} {}      - Make a DELETE request", "DELETE".yellow(), "/api/users/1".blue());
+        println!(
+            "  {} {}           - Make a GET request",
+            "GET".yellow(),
+            "/api/users".blue()
+        );
+        println!(
+            "  {} {}        - Make a POST request",
+            "POST".yellow(),
+            "/api/users".blue()
+        );
+        println!(
+            "  {} {}         - Make a PUT request",
+            "PUT".yellow(),
+            "/api/users/1".blue()
+        );
+        println!(
+            "  {} {}      - Make a DELETE request",
+            "DELETE".yellow(),
+            "/api/users/1".blue()
+        );
         println!();
         println!("{}", "Special Commands:".cyan().bold());
-        println!("  {}                    - Show this help", CMD_HELP.yellow());
+        println!(
+            "  {}                    - Show this help",
+            CMD_HELP.yellow()
+        );
         println!("  {}                    - Exit webly", CMD_EXIT.yellow());
         println!("  {}                   - Clear screen", CMD_CLEAR.yellow());
-        println!("  {}                 - Show session headers", CMD_HEADERS.yellow());
-        println!("  {} {} {}  - Set a session header", CMD_SET_HEADER.yellow(), "name".blue(), "value".blue());
-        println!("  {} {}     - Remove a session header", CMD_REMOVE_HEADER.yellow(), "name".blue());
-        println!("  {}                 - Toggle verbose mode", CMD_VERBOSE.yellow());
+        println!(
+            "  {}                 - Show session headers",
+            CMD_HEADERS.yellow()
+        );
+        println!(
+            "  {} {} {}  - Set a session header",
+            CMD_SET_HEADER.yellow(),
+            "name".blue(),
+            "value".blue()
+        );
+        println!(
+            "  {} {}     - Remove a session header",
+            CMD_REMOVE_HEADER.yellow(),
+            "name".blue()
+        );
+        println!(
+            "  {}                 - Toggle verbose mode",
+            CMD_VERBOSE.yellow()
+        );
         println!();
         println!("{}", "Tips:".cyan().bold());
-        println!("  - For POST/PUT/PATCH without inline body, press Enter to enter multi-line mode");
+        println!(
+            "  - For POST/PUT/PATCH without inline body, press Enter to enter multi-line mode"
+        );
         println!("  - Use Ctrl+D to finish multi-line input, Ctrl+C to cancel");
         println!("  - Session headers persist across requests");
         println!("  - Use arrow keys to navigate command history");

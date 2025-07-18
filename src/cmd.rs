@@ -414,8 +414,14 @@ mod test {
             "overridden-value"
         );
 
-        assert_eq!(cmd_args.url.as_ref().unwrap().path(), Some(&"/new/path".to_string()));
-        assert_eq!(cmd_args.url.as_ref().unwrap().query(), Some(&"query=test".to_string()));
+        assert_eq!(
+            cmd_args.url.as_ref().unwrap().path(),
+            Some(&"/new/path".to_string())
+        );
+        assert_eq!(
+            cmd_args.url.as_ref().unwrap().query(),
+            Some(&"query=test".to_string())
+        );
     }
 
     #[test]
@@ -440,7 +446,10 @@ mod test {
         // Check that only specified values were overridden
         assert_eq!(cmd_args.method().unwrap(), "GET"); // Original method preserved
         assert_eq!(cmd_args.body().unwrap(), "new body"); // Body overridden
-        assert_eq!(cmd_args.url.as_ref().unwrap().path(), Some(&"/path".to_string())); // Original path preserved
+        assert_eq!(
+            cmd_args.url.as_ref().unwrap().path(),
+            Some(&"/path".to_string())
+        ); // Original path preserved
     }
 
     #[test]
