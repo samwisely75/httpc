@@ -24,3 +24,5 @@ This project is a Rust-based HTTP client named `httpc`, previously known as `web
 7. **String Formatting**: Use embedded expressions for string formatting, e.g., `format!("Hello, {name}")` instead of `format!("Hello, {}", name)`. The latter is deprecated in Rust 2021 edition.
 
 8. **Continuous Integration**: Use CI/CD pipelines to automate testing and deployment processes.
+
+9. Run cargo clippy and cargo fmt before submitting pull requests to ensure code quality and consistency.
