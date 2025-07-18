@@ -593,8 +593,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/httpc.rb
-          git commit -m "httpc ${VERSION}"
-          git push
+          
+          # Only commit if there are changes
+          if git diff --cached --quiet; then
+            echo "No changes to commit - formula is already up to date"
+          else
+            git commit -m "httpc ${VERSION}"
+            git push
+            echo "Successfully updated homebrew formula"
+          fi
 
   # publish-crates-io:
   #   name: Publish to Crates.io
