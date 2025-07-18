@@ -10,7 +10,7 @@ mod utils;
 use cmd::CommandLineArgs;
 use http::{HttpClient, HttpConnectionProfile, HttpRequestArgs, HttpResponse};
 use ini::{get_blank_profile, IniProfileStore, DEFAULT_INI_FILE_PATH};
-use repl::Repl;
+use repl::VimRepl;
 use reqwest::StatusCode;
 // use stdio::StdinArgs;  // Temporarily disabled for REPL
 use tracing_subscriber::{fmt::time::ChronoLocal, EnvFilter};
@@ -93,8 +93,8 @@ async fn run_interactive_mode(cmd_args: &CommandLineArgs) -> Result<()> {
     profile.merge_profile(cmd_args);
     tracing::debug!("Merged profile: {:?}", profile);
 
-    // Create and run the REPL
-    let mut repl = Repl::new(profile, cmd_args.verbose())?;
+    // Create and run the VIM-like REPL
+    let mut repl = VimRepl::new(profile, cmd_args.verbose())?;
     repl.run().await
 }
 
