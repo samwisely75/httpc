@@ -16,9 +16,9 @@ The application will enter REPL mode with a dual-pane interface.
 
 The REPL provides a split-screen terminal interface with two main panes:
 
-- **Request Pane** (Top): Where you compose HTTP requests
-- **Response Pane** (Bottom): Displays HTTP responses
-- **Status Line** (Bottom): Shows current mode, pane, and status messages
+- **Request Pane** (Top): Where you compose HTTP requests (editable)
+- **Response Pane** (Bottom): Displays HTTP responses (read-only with full navigation)
+- **Status Line** (Bottom): Shows command input and response status with timing
 
 ### Line Numbers
 
@@ -55,13 +55,13 @@ The REPL supports multiple vim-like editing modes:
 ## Navigation
 
 ### Basic Movement
-- **h, j, k, l** or **Arrow Keys**: Move cursor left, down, up, right
-- **w**: Move forward by word
-- **b**: Move backward by word
-- **0**: Move to beginning of line
-- **$**: Move to end of line
-- **gg**: Go to start of buffer
-- **G**: Go to end of buffer
+- **h, j, k, l** or **Arrow Keys**: Move cursor left, down, up, right (works in both panes)
+- **w**: Move forward by word (works in both panes)
+- **b**: Move backward by word (works in both panes)
+- **0**: Move to beginning of line (works in both panes)
+- **$**: Move to end of line (works in both panes)
+- **gg**: Go to start of buffer (works in both panes)
+- **G**: Go to end of buffer (works in both panes)
 
 ### Scrolling
 - **Ctrl+U**: Scroll up half page

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::io::{self, Write};
+use std::time::Instant;
 
 use anyhow::Result;
 use crossterm::{
@@ -7,7 +8,7 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
     style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor},
-    terminal::{self, Clear, ClearType},
+    terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
 use crate::http::{HttpClient, HttpRequestArgs};
@@ -65,6 +66,8 @@ pub struct VimRepl {
     pending_g: bool,
     pending_ctrl_w: bool,
     last_response_status: Option<String>,
+    request_start_time: Option<Instant>,
+    last_request_duration: Option<u64>, // in milliseconds
     pane_split_ratio: f64, // 0.0 to 1.0, represents input pane height ratio
 }
 
@@ -241,6 +244,7 @@ impl Buffer {
     fn move_cursor_to_start(&mut self) {
         self.cursor_line = 0;
         self.cursor_col = 0;
+        self.scroll_offset = 0; // Ensure we scroll to top
     }
 
     fn move_cursor_to_end(&mut self) {
@@ -250,59 +254,172 @@ impl Buffer {
         }
     }
 
-    fn move_cursor_word_forward(&mut self) {
-        if let Some(line) = self.lines.get(self.cursor_line) {
-            let chars: Vec<char> = line.chars().collect();
-            let mut pos = self.cursor_col;
+    fn move_cursor_to_end_with_scroll(&mut self, visible_height: usize) {
+        if !self.lines.is_empty() {
+            self.cursor_line = self.lines.len() - 1;
+            self.cursor_col = self.lines[self.cursor_line].len();
             
-            // Skip current word
-            while pos < chars.len() && chars[pos].is_alphanumeric() {
-                pos += 1;
-            }
-            
-            // Skip whitespace
-            while pos < chars.len() && chars[pos].is_whitespace() {
-                pos += 1;
-            }
-            
-            // If we're at the end of the line, move to next line
-            if pos >= chars.len() && self.cursor_line < self.lines.len() - 1 {
-                self.cursor_line += 1;
-                self.cursor_col = 0;
+            // Adjust scroll to show the end of the buffer
+            if self.lines.len() > visible_height {
+                self.scroll_offset = self.lines.len() - visible_height;
             } else {
-                self.cursor_col = pos;
+                self.scroll_offset = 0;
+            }
+        }
+    }
+
+    fn scroll_half_page_up_with_cursor(&mut self, half_page_size: usize) {
+        let scroll_amount = half_page_size.min(self.scroll_offset);
+        self.scroll_offset -= scroll_amount;
+        
+        // Move cursor to maintain relative position or to top of visible area
+        if self.cursor_line >= scroll_amount {
+            self.cursor_line -= scroll_amount;
+        } else {
+            self.cursor_line = self.scroll_offset;
+        }
+        
+        // Ensure cursor column is within line bounds
+        let line_len = self.lines.get(self.cursor_line).map_or(0, |l| l.len());
+        self.cursor_col = self.cursor_col.min(line_len);
+    }
+
+    fn scroll_half_page_down_with_cursor(&mut self, half_page_size: usize, visible_height: usize) {
+        let max_scroll = if self.lines.len() > visible_height {
+            self.lines.len() - visible_height
+        } else {
+            0
+        };
+        let scroll_amount = half_page_size.min(max_scroll - self.scroll_offset);
+        self.scroll_offset += scroll_amount;
+        
+        // Move cursor to maintain relative position or to bottom of visible area
+        let new_cursor_line = self.cursor_line + scroll_amount;
+        if new_cursor_line < self.lines.len() {
+            self.cursor_line = new_cursor_line;
+        } else {
+            self.cursor_line = self.lines.len().saturating_sub(1);
+        }
+        
+        // Ensure cursor column is within line bounds
+        let line_len = self.lines.get(self.cursor_line).map_or(0, |l| l.len());
+        self.cursor_col = self.cursor_col.min(line_len);
+    }
+
+    fn move_cursor_word_forward(&mut self) {
+        loop {
+            if let Some(line) = self.lines.get(self.cursor_line) {
+                let chars: Vec<char> = line.chars().collect();
+                let mut pos = self.cursor_col;
+                
+                if pos >= chars.len() {
+                    // At end of line, move to next line
+                    if self.cursor_line < self.lines.len() - 1 {
+                        self.cursor_line += 1;
+                        self.cursor_col = 0;
+                        // Skip leading whitespace on new line
+                        if let Some(new_line) = self.lines.get(self.cursor_line) {
+                            let new_chars: Vec<char> = new_line.chars().collect();
+                            while self.cursor_col < new_chars.len() && new_chars[self.cursor_col].is_whitespace() {
+                                self.cursor_col += 1;
+                            }
+                        }
+                        return;
+                    } else {
+                        return; // Already at end of buffer
+                    }
+                }
+                
+                let start_char = chars[pos];
+                
+                if start_char.is_whitespace() {
+                    // Skip whitespace
+                    while pos < chars.len() && chars[pos].is_whitespace() {
+                        pos += 1;
+                    }
+                } else if start_char.is_alphanumeric() || start_char == '_' {
+                    // Skip alphanumeric word
+                    while pos < chars.len() && (chars[pos].is_alphanumeric() || chars[pos] == '_') {
+                        pos += 1;
+                    }
+                } else {
+                    // Skip punctuation/symbols (treat each as separate word)
+                    while pos < chars.len() && !chars[pos].is_alphanumeric() && !chars[pos].is_whitespace() && chars[pos] != '_' {
+                        pos += 1;
+                    }
+                }
+                
+                if pos < chars.len() {
+                    self.cursor_col = pos;
+                    return;
+                } else {
+                    // Reached end of line, try next line
+                    if self.cursor_line < self.lines.len() - 1 {
+                        self.cursor_line += 1;
+                        self.cursor_col = 0;
+                        continue; // Loop to handle new line
+                    } else {
+                        self.cursor_col = chars.len();
+                        return;
+                    }
+                }
+            } else {
+                return;
             }
         }
     }
 
     fn move_cursor_word_backward(&mut self) {
-        if let Some(line) = self.lines.get(self.cursor_line) {
-            let chars: Vec<char> = line.chars().collect();
-            let mut pos = self.cursor_col;
-            
-            if pos > 0 {
+        loop {
+            if let Some(line) = self.lines.get(self.cursor_line) {
+                let chars: Vec<char> = line.chars().collect();
+                let mut pos = self.cursor_col;
+                
+                if pos == 0 {
+                    // At beginning of line, move to previous line
+                    if self.cursor_line > 0 {
+                        self.cursor_line -= 1;
+                        if let Some(prev_line) = self.lines.get(self.cursor_line) {
+                            self.cursor_col = prev_line.len();
+                            continue; // Loop to handle previous line
+                        }
+                    }
+                    return; // Already at beginning of buffer
+                }
+                
                 pos -= 1;
                 
-                // Skip whitespace
-                while pos > 0 && chars[pos].is_whitespace() {
-                    pos -= 1;
+                // Skip trailing whitespace if we're starting on whitespace
+                if pos < chars.len() && chars[pos].is_whitespace() {
+                    while pos > 0 && chars[pos].is_whitespace() {
+                        pos -= 1;
+                    }
+                    if pos == 0 && chars[pos].is_whitespace() {
+                        self.cursor_col = 0;
+                        return;
+                    }
                 }
                 
-                // Skip current word
-                while pos > 0 && chars[pos].is_alphanumeric() {
-                    pos -= 1;
-                }
-                
-                // If we stopped on a non-alphanumeric character, move one forward
-                if pos > 0 && !chars[pos].is_alphanumeric() {
-                    pos += 1;
+                if pos < chars.len() {
+                    let current_char = chars[pos];
+                    
+                    if current_char.is_alphanumeric() || current_char == '_' {
+                        // Move to beginning of alphanumeric word
+                        while pos > 0 && (chars[pos - 1].is_alphanumeric() || chars[pos - 1] == '_') {
+                            pos -= 1;
+                        }
+                    } else if !current_char.is_whitespace() {
+                        // Move to beginning of punctuation sequence
+                        while pos > 0 && !chars[pos - 1].is_alphanumeric() && !chars[pos - 1].is_whitespace() && chars[pos - 1] != '_' {
+                            pos -= 1;
+                        }
+                    }
                 }
                 
                 self.cursor_col = pos;
-            } else if self.cursor_line > 0 {
-                // Move to end of previous line
-                self.cursor_line -= 1;
-                self.cursor_col = self.lines[self.cursor_line].len();
+                return;
+            } else {
+                return;
             }
         }
     }
@@ -464,6 +581,189 @@ impl ResponseBuffer {
         }
     }
 
+    fn move_cursor_word_forward(&mut self) {
+        loop {
+            if let Some(line) = self.lines.get(self.cursor_line) {
+                let chars: Vec<char> = line.chars().collect();
+                let mut pos = self.cursor_col;
+                
+                if pos >= chars.len() {
+                    // At end of line, move to next line
+                    if self.cursor_line < self.lines.len() - 1 {
+                        self.cursor_line += 1;
+                        self.cursor_col = 0;
+                        // Skip leading whitespace on new line
+                        if let Some(new_line) = self.lines.get(self.cursor_line) {
+                            let new_chars: Vec<char> = new_line.chars().collect();
+                            while self.cursor_col < new_chars.len() && new_chars[self.cursor_col].is_whitespace() {
+                                self.cursor_col += 1;
+                            }
+                        }
+                        return;
+                    } else {
+                        return; // Already at end of buffer
+                    }
+                }
+                
+                let start_char = chars[pos];
+                
+                if start_char.is_whitespace() {
+                    // Skip whitespace
+                    while pos < chars.len() && chars[pos].is_whitespace() {
+                        pos += 1;
+                    }
+                } else if start_char.is_alphanumeric() || start_char == '_' {
+                    // Skip alphanumeric word
+                    while pos < chars.len() && (chars[pos].is_alphanumeric() || chars[pos] == '_') {
+                        pos += 1;
+                    }
+                } else {
+                    // Skip punctuation/symbols (treat each as separate word)
+                    while pos < chars.len() && !chars[pos].is_alphanumeric() && !chars[pos].is_whitespace() && chars[pos] != '_' {
+                        pos += 1;
+                    }
+                }
+                
+                if pos < chars.len() {
+                    self.cursor_col = pos;
+                    return;
+                } else {
+                    // Reached end of line, try next line
+                    if self.cursor_line < self.lines.len() - 1 {
+                        self.cursor_line += 1;
+                        self.cursor_col = 0;
+                        continue; // Loop to handle new line
+                    } else {
+                        self.cursor_col = chars.len();
+                        return;
+                    }
+                }
+            } else {
+                return;
+            }
+        }
+    }
+
+    fn move_cursor_word_backward(&mut self) {
+        loop {
+            if let Some(line) = self.lines.get(self.cursor_line) {
+                let chars: Vec<char> = line.chars().collect();
+                let mut pos = self.cursor_col;
+                
+                if pos == 0 {
+                    // At beginning of line, move to previous line
+                    if self.cursor_line > 0 {
+                        self.cursor_line -= 1;
+                        if let Some(prev_line) = self.lines.get(self.cursor_line) {
+                            self.cursor_col = prev_line.len();
+                            continue; // Loop to handle previous line
+                        }
+                    }
+                    return; // Already at beginning of buffer
+                }
+                
+                pos -= 1;
+                
+                // Skip trailing whitespace if we're starting on whitespace
+                if pos < chars.len() && chars[pos].is_whitespace() {
+                    while pos > 0 && chars[pos].is_whitespace() {
+                        pos -= 1;
+                    }
+                    if pos == 0 && chars[pos].is_whitespace() {
+                        self.cursor_col = 0;
+                        return;
+                    }
+                }
+                
+                if pos < chars.len() {
+                    let current_char = chars[pos];
+                    
+                    if current_char.is_alphanumeric() || current_char == '_' {
+                        // Move to beginning of alphanumeric word
+                        while pos > 0 && (chars[pos - 1].is_alphanumeric() || chars[pos - 1] == '_') {
+                            pos -= 1;
+                        }
+                    } else if !current_char.is_whitespace() {
+                        // Move to beginning of punctuation sequence
+                        while pos > 0 && !chars[pos - 1].is_alphanumeric() && !chars[pos - 1].is_whitespace() && chars[pos - 1] != '_' {
+                            pos -= 1;
+                        }
+                    }
+                }
+                
+                self.cursor_col = pos;
+                return;
+            } else {
+                return;
+            }
+        }
+    }
+
+    fn move_cursor_to_start(&mut self) {
+        self.cursor_line = 0;
+        self.cursor_col = 0;
+        self.scroll_offset = 0; // Ensure we scroll to top
+    }
+
+    fn move_cursor_to_end(&mut self) {
+        if !self.lines.is_empty() {
+            self.cursor_line = self.lines.len() - 1;
+            self.cursor_col = self.lines[self.cursor_line].len();
+        }
+    }
+
+    fn move_cursor_to_end_with_scroll(&mut self, visible_height: usize) {
+        if !self.lines.is_empty() {
+            self.cursor_line = self.lines.len() - 1;
+            self.cursor_col = self.lines[self.cursor_line].len();
+            
+            // Adjust scroll to show the end of the buffer
+            if self.lines.len() > visible_height {
+                self.scroll_offset = self.lines.len() - visible_height;
+            } else {
+                self.scroll_offset = 0;
+            }
+        }
+    }
+
+    fn scroll_half_page_up_with_cursor(&mut self, half_page_size: usize) {
+        let scroll_amount = half_page_size.min(self.scroll_offset);
+        self.scroll_offset -= scroll_amount;
+        
+        // Move cursor to maintain relative position or to top of visible area
+        if self.cursor_line >= scroll_amount {
+            self.cursor_line -= scroll_amount;
+        } else {
+            self.cursor_line = self.scroll_offset;
+        }
+        
+        // Ensure cursor column is within line bounds
+        let line_len = self.lines.get(self.cursor_line).map_or(0, |l| l.len());
+        self.cursor_col = self.cursor_col.min(line_len);
+    }
+
+    fn scroll_half_page_down_with_cursor(&mut self, half_page_size: usize, visible_height: usize) {
+        let max_scroll = if self.lines.len() > visible_height {
+            self.lines.len() - visible_height
+        } else {
+            0
+        };
+        let scroll_amount = half_page_size.min(max_scroll - self.scroll_offset);
+        self.scroll_offset += scroll_amount;
+        
+        // Move cursor to maintain relative position or to bottom of visible area
+        let new_cursor_line = self.cursor_line + scroll_amount;
+        if new_cursor_line < self.lines.len() {
+            self.cursor_line = new_cursor_line;
+        } else {
+            self.cursor_line = self.lines.len().saturating_sub(1);
+        }
+        
+        // Ensure cursor column is within line bounds
+        let line_len = self.lines.get(self.cursor_line).map_or(0, |l| l.len());
+        self.cursor_col = self.cursor_col.min(line_len);
+    }
+
     fn scroll_half_page_up(&mut self, half_page_size: usize) {
         let scroll_amount = half_page_size.min(self.scroll_offset);
         self.scroll_offset -= scroll_amount;
@@ -502,13 +802,16 @@ impl VimRepl {
             pending_g: false,
             pending_ctrl_w: false,
             last_response_status: None,
+            request_start_time: None,
+            last_request_duration: None,
             pane_split_ratio: 0.5, // Start with 50/50 split
         })
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        // Enable raw mode for terminal
+        // Enable raw mode and alternate screen for proper terminal isolation
         terminal::enable_raw_mode()?;
+        execute!(io::stdout(), EnterAlternateScreen)?;
         
         // Clear screen and move cursor to top
         execute!(io::stdout(), Clear(ClearType::All), cursor::MoveTo(0, 0))?;
@@ -518,10 +821,10 @@ impl VimRepl {
         
         let result = self.event_loop().await;
         
-        // Clean up - restore default cursor
+        // Clean up - restore default cursor and exit alternate screen
         execute!(io::stdout(), SetCursorStyle::DefaultUserShape)?;
+        execute!(io::stdout(), LeaveAlternateScreen)?;
         terminal::disable_raw_mode()?;
-        execute!(io::stdout(), Clear(ClearType::All), cursor::MoveTo(0, 0))?;
         
         result
     }
@@ -581,7 +884,6 @@ impl VimRepl {
         // Handle Ctrl+W window navigation (vim-style)
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('w') {
             self.pending_ctrl_w = true;
-            self.status_message = "Ctrl+W pressed. Press w/h/j/k/l for window navigation".to_string();
             return Ok(false);
         }
         
@@ -594,18 +896,12 @@ impl VimRepl {
                         Pane::Request => Pane::Response,
                         Pane::Response => Pane::Request,
                     };
-                    self.status_message = format!("Switched to {} pane", 
-                        match self.current_pane {
-                            Pane::Request => "request",
-                            Pane::Response => "response",
-                        });
                     self.pending_ctrl_w = false;
                     return Ok(false);
                 }
                 KeyCode::Esc => {
                     // Cancel Ctrl+W command
                     self.pending_ctrl_w = false;
-                    self.status_message = "Cancelled window command".to_string();
                     return Ok(false);
                 }
                 _ => {
@@ -623,13 +919,11 @@ impl VimRepl {
                 KeyCode::Char('u') => {
                     if self.current_pane == Pane::Request {
                         let half_page = self.get_request_pane_height() / 2;
-                        self.buffer.scroll_half_page_up(half_page);
+                        self.buffer.scroll_half_page_up_with_cursor(half_page);
                     } else if self.response_buffer.is_some() {
                         let half_page = self.get_response_pane_height() / 2;
                         if let Some(ref mut response) = self.response_buffer {
-                            for _ in 0..half_page {
-                                response.scroll_up();
-                            }
+                            response.scroll_half_page_up_with_cursor(half_page);
                         }
                     }
                     return Ok(false);
@@ -637,34 +931,47 @@ impl VimRepl {
                 KeyCode::Char('d') => {
                     if self.current_pane == Pane::Request {
                         let half_page = self.get_request_pane_height() / 2;
-                        let max_lines = self.get_request_pane_height();
-                        self.buffer.scroll_half_page_down(half_page, max_lines);
+                        let visible_height = self.get_request_pane_height();
+                        self.buffer.scroll_half_page_down_with_cursor(half_page, visible_height);
                     } else if self.response_buffer.is_some() {
                         let half_page = self.get_response_pane_height() / 2;
-                        let max_lines = self.get_response_pane_height();
+                        let visible_height = self.get_response_pane_height();
                         if let Some(ref mut response) = self.response_buffer {
-                            for _ in 0..half_page {
-                                response.scroll_down(max_lines);
-                            }
+                            response.scroll_half_page_down_with_cursor(half_page, visible_height);
+                        }
+                    }
+                    return Ok(false);
+                }
+                KeyCode::Char('f') => {
+                    // Ctrl+F - Scroll forward (down) one full page
+                    if self.current_pane == Pane::Request {
+                        let full_page = self.get_request_pane_height();
+                        let visible_height = self.get_request_pane_height();
+                        self.buffer.scroll_half_page_down_with_cursor(full_page, visible_height);
+                    } else if self.response_buffer.is_some() {
+                        let full_page = self.get_response_pane_height();
+                        let visible_height = self.get_response_pane_height();
+                        if let Some(ref mut response) = self.response_buffer {
+                            response.scroll_half_page_down_with_cursor(full_page, visible_height);
+                        }
+                    }
+                    return Ok(false);
+                }
+                KeyCode::Char('b') => {
+                    // Ctrl+B - Scroll backward (up) one full page
+                    if self.current_pane == Pane::Request {
+                        let full_page = self.get_request_pane_height();
+                        self.buffer.scroll_half_page_up_with_cursor(full_page);
+                    } else if self.response_buffer.is_some() {
+                        let full_page = self.get_response_pane_height();
+                        if let Some(ref mut response) = self.response_buffer {
+                            response.scroll_half_page_up_with_cursor(full_page);
                         }
                     }
                     return Ok(false);
                 }
                 KeyCode::Char('k') => {
-                    // Ctrl+K - Boundary control (upward)
-                    if self.response_buffer.is_some() {
-                        if self.current_pane == Pane::Request {
-                            // Input pane: shrink
-                            self.shrink_input_pane();
-                        } else {
-                            // Output pane: expand
-                            self.expand_output_pane();
-                        }
-                    }
-                    return Ok(false);
-                }
-                KeyCode::Char('j') => {
-                    // Ctrl+J - Boundary control (downward)
+                    // Ctrl+K - Boundary control (downward)
                     if self.response_buffer.is_some() {
                         if self.current_pane == Pane::Request {
                             // Input pane: expand
@@ -672,6 +979,19 @@ impl VimRepl {
                         } else {
                             // Output pane: shrink
                             self.shrink_output_pane();
+                        }
+                    }
+                    return Ok(false);
+                }
+                KeyCode::Char('j') => {
+                    // Ctrl+J - Boundary control (upward)
+                    if self.response_buffer.is_some() {
+                        if self.current_pane == Pane::Request {
+                            // Input pane: shrink
+                            self.shrink_input_pane();
+                        } else {
+                            // Output pane: expand
+                            self.expand_output_pane();
                         }
                     }
                     return Ok(false);
@@ -776,12 +1096,16 @@ impl VimRepl {
                 // Move cursor backward by word
                 if self.current_pane == Pane::Request {
                     self.buffer.move_cursor_word_backward();
+                } else if let Some(ref mut response) = self.response_buffer {
+                    response.move_cursor_word_backward();
                 }
             }
             KeyCode::Char('w') => {
                 // Move cursor forward by word
                 if self.current_pane == Pane::Request {
                     self.buffer.move_cursor_word_forward();
+                } else if let Some(ref mut response) = self.response_buffer {
+                    response.move_cursor_word_forward();
                 }
             }
             KeyCode::Char('g') => {
@@ -795,12 +1119,43 @@ impl VimRepl {
                         // First 'g' - wait for second 'g'
                         self.pending_g = true;
                     }
+                } else if let Some(ref mut response) = self.response_buffer {
+                    if self.pending_g {
+                        // Second 'g' - go to start of buffer
+                        response.move_cursor_to_start();
+                        self.pending_g = false;
+                    } else {
+                        // First 'g' - wait for second 'g'
+                        self.pending_g = true;
+                    }
                 }
             }
             KeyCode::Char('G') => {
                 // Go to end of buffer
                 if self.current_pane == Pane::Request {
-                    self.buffer.move_cursor_to_end();
+                    let visible_height = self.get_request_pane_height();
+                    self.buffer.move_cursor_to_end_with_scroll(visible_height);
+                } else if self.response_buffer.is_some() {
+                    let visible_height = self.get_response_pane_height();
+                    if let Some(ref mut response) = self.response_buffer {
+                        response.move_cursor_to_end_with_scroll(visible_height);
+                    }
+                }
+            }
+            KeyCode::Char('0') => {
+                // Move to beginning of line
+                if self.current_pane == Pane::Request {
+                    self.buffer.move_cursor_to_line_start();
+                } else if let Some(ref mut response) = self.response_buffer {
+                    response.move_cursor_to_line_start();
+                }
+            }
+            KeyCode::Char('$') => {
+                // Move to end of line
+                if self.current_pane == Pane::Request {
+                    self.buffer.move_cursor_to_line_end();
+                } else if let Some(ref mut response) = self.response_buffer {
+                    response.move_cursor_to_line_end();
                 }
             }
             KeyCode::Char('v') => {
@@ -814,6 +1169,17 @@ impl VimRepl {
                         end_col: self.buffer.cursor_col,
                     });
                     self.status_message = "-- VISUAL --".to_string();
+                } else if self.current_pane == Pane::Response && self.response_buffer.is_some() {
+                    self.mode = EditorMode::Visual;
+                    if let Some(ref response) = self.response_buffer {
+                        self.visual_selection = Some(VisualSelection {
+                            start_line: response.cursor_line,
+                            start_col: response.cursor_col,
+                            end_line: response.cursor_line,
+                            end_col: response.cursor_col,
+                        });
+                    }
+                    self.status_message = "-- VISUAL --".to_string();
                 }
             }
             KeyCode::Char('V') => {
@@ -826,6 +1192,17 @@ impl VimRepl {
                         end_line: self.buffer.cursor_line,
                         end_col: self.buffer.lines.get(self.buffer.cursor_line).map_or(0, |l| l.len()),
                     });
+                    self.status_message = "-- VISUAL LINE --".to_string();
+                } else if self.current_pane == Pane::Response && self.response_buffer.is_some() {
+                    self.mode = EditorMode::VisualLine;
+                    if let Some(ref response) = self.response_buffer {
+                        self.visual_selection = Some(VisualSelection {
+                            start_line: response.cursor_line,
+                            start_col: 0,
+                            end_line: response.cursor_line,
+                            end_col: response.lines.get(response.cursor_line).map_or(0, |l| l.len()),
+                        });
+                    }
                     self.status_message = "-- VISUAL LINE --".to_string();
                 }
             }
@@ -971,42 +1348,33 @@ impl VimRepl {
                 execute!(io::stdout(), SetCursorStyle::BlinkingBlock)?;
             }
             KeyCode::Enter => {
-                // Check for Ctrl+Enter to execute request
-                if key.modifiers.contains(KeyModifiers::CONTROL) {
-                    // Execute request in insert mode
-                    if self.current_pane == Pane::Request {
-                        self.execute_request().await?;
-                    }
-                } else {
-                    let visible_height = self.get_request_pane_height();
-                    self.buffer.new_line_with_scroll(visible_height);
-                }
+                let visible_height = self.get_request_pane_height();
+                self.buffer.new_line_with_scroll(visible_height);
             }
             KeyCode::Char(ch) => {
                 // Handle Ctrl+character combinations
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
                     match ch {
                         'm' => {
-                            // Ctrl+M - Maximize current pane or execute request
+                            // Ctrl+M - Maximize current pane
                             if self.current_pane == Pane::Request {
                                 if self.response_buffer.is_some() {
                                     // Maximize input pane
                                     self.maximize_input_pane();
                                 } else {
-                                    // Execute request if no response buffer
-                                    self.execute_request().await?;
+                                    // Do nothing if no response buffer
                                 }
                             }
                         }
                         'j' => {
-                            // Ctrl+J - Boundary control (downward) or execute request
+                            // Ctrl+J - Boundary control (upward) or execute request
                             if self.current_pane == Pane::Request {
                                 if self.response_buffer.is_some() {
-                                    // Expand input pane
-                                    self.expand_input_pane();
+                                    // Shrink input pane
+                                    self.shrink_input_pane();
                                 } else {
                                     // Execute request if no response buffer
-                                    self.execute_request().await?;
+                                    self.execute_request().await?
                                 }
                             }
                         }
@@ -1026,10 +1394,10 @@ impl VimRepl {
                             }
                         }
                         'k' => {
-                            // Ctrl+K - Boundary control (upward) in insert mode
+                            // Ctrl+K - Boundary control (downward) in insert mode
                             if self.current_pane == Pane::Request && self.response_buffer.is_some() {
-                                // Shrink input pane
-                                self.shrink_input_pane();
+                                // Expand input pane
+                                self.expand_input_pane();
                             }
                         }
                         _ => {
@@ -1102,6 +1470,7 @@ impl VimRepl {
                 let should_quit = self.execute_command().await?;
                 self.mode = EditorMode::Normal;
                 self.command_buffer.clear();
+                self.status_message = "".to_string(); // Clear status message after command execution
                 return Ok(should_quit);
             }
             _ => {}
@@ -1129,13 +1498,21 @@ impl VimRepl {
                     self.status_message = "-- VISUAL LINE --".to_string();
                     if let Some(ref mut sel) = self.visual_selection {
                         sel.start_col = 0;
-                        sel.end_col = self.buffer.lines.get(self.buffer.cursor_line).map_or(0, |l| l.len());
+                        if self.current_pane == Pane::Request {
+                            sel.end_col = self.buffer.lines.get(self.buffer.cursor_line).map_or(0, |l| l.len());
+                        } else if let Some(ref response) = self.response_buffer {
+                            sel.end_col = response.lines.get(response.cursor_line).map_or(0, |l| l.len());
+                        }
                     }
                 } else {
                     self.mode = EditorMode::Visual;
                     self.status_message = "-- VISUAL --".to_string();
                     if let Some(ref mut sel) = self.visual_selection {
-                        sel.end_col = self.buffer.cursor_col;
+                        if self.current_pane == Pane::Request {
+                            sel.end_col = self.buffer.cursor_col;
+                        } else if let Some(ref response) = self.response_buffer {
+                            sel.end_col = response.cursor_col;
+                        }
                     }
                 }
             }
@@ -1146,44 +1523,97 @@ impl VimRepl {
                     self.clipboard = yanked_text;
                 }
                 self.mode = EditorMode::Normal;
+                self.status_message = "".to_string();
                 self.visual_selection = None;
             }
             KeyCode::Char('d') => {
-                // Delete selection
-                if let Some(selection) = self.visual_selection.take() {
-                    let deleted_text = self.delete_selected_text(&selection);
-                    self.clipboard = deleted_text;
+                // Delete selection (only works in Request pane)
+                if self.current_pane == Pane::Request {
+                    if let Some(selection) = self.visual_selection.take() {
+                        let deleted_text = self.delete_selected_text(&selection);
+                        self.clipboard = deleted_text;
+                    }
                 }
                 self.mode = EditorMode::Normal;
+                self.status_message = "".to_string();
+                self.visual_selection = None;
             }
             // Movement commands that update selection
             KeyCode::Char('h') | KeyCode::Left => {
-                self.buffer.move_cursor_left();
+                if self.current_pane == Pane::Request {
+                    self.buffer.move_cursor_left();
+                } else if let Some(ref mut response) = self.response_buffer {
+                    response.move_cursor_left();
+                }
                 self.update_visual_selection();
             }
             KeyCode::Char('j') | KeyCode::Down => {
-                let visible_height = self.get_request_pane_height();
-                self.buffer.move_cursor_down_with_scroll(visible_height);
+                if self.current_pane == Pane::Request {
+                    let visible_height = self.get_request_pane_height();
+                    self.buffer.move_cursor_down_with_scroll(visible_height);
+                } else if self.response_buffer.is_some() {
+                    if let Some(ref mut response) = self.response_buffer {
+                        response.move_cursor_down();
+                    }
+                }
                 self.update_visual_selection();
             }
             KeyCode::Char('k') | KeyCode::Up => {
-                self.buffer.move_cursor_up_with_scroll();
+                if self.current_pane == Pane::Request {
+                    self.buffer.move_cursor_up_with_scroll();
+                } else if self.response_buffer.is_some() {
+                    if let Some(ref mut response) = self.response_buffer {
+                        response.move_cursor_up();
+                    }
+                }
                 self.update_visual_selection();
             }
             KeyCode::Char('l') | KeyCode::Right => {
-                self.buffer.move_cursor_right();
+                if self.current_pane == Pane::Request {
+                    self.buffer.move_cursor_right();
+                } else if let Some(ref mut response) = self.response_buffer {
+                    response.move_cursor_right();
+                }
                 self.update_visual_selection();
             }
             KeyCode::Char('w') => {
-                self.buffer.move_cursor_word_forward();
+                if self.current_pane == Pane::Request {
+                    self.buffer.move_cursor_word_forward();
+                } else if let Some(ref mut response) = self.response_buffer {
+                    response.move_cursor_word_forward();
+                }
                 self.update_visual_selection();
             }
             KeyCode::Char('b') => {
-                self.buffer.move_cursor_word_backward();
+                if self.current_pane == Pane::Request {
+                    self.buffer.move_cursor_word_backward();
+                } else if let Some(ref mut response) = self.response_buffer {
+                    response.move_cursor_word_backward();
+                }
+                self.update_visual_selection();
+            }
+            KeyCode::Char('0') => {
+                if self.current_pane == Pane::Request {
+                    self.buffer.move_cursor_to_line_start();
+                } else if let Some(ref mut response) = self.response_buffer {
+                    response.move_cursor_to_line_start();
+                }
+                self.update_visual_selection();
+            }
+            KeyCode::Char('$') => {
+                if self.current_pane == Pane::Request {
+                    self.buffer.move_cursor_to_line_end();
+                } else if let Some(ref mut response) = self.response_buffer {
+                    response.move_cursor_to_line_end();
+                }
                 self.update_visual_selection();
             }
             KeyCode::Char('G') => {
-                self.buffer.move_cursor_to_end();
+                if self.current_pane == Pane::Request {
+                    self.buffer.move_cursor_to_end();
+                } else if let Some(ref mut response) = self.response_buffer {
+                    response.move_cursor_to_end();
+                }
                 self.update_visual_selection();
             }
             _ => {}
@@ -1193,11 +1623,20 @@ impl VimRepl {
 
     fn update_visual_selection(&mut self) {
         if let Some(ref mut selection) = self.visual_selection {
-            selection.end_line = self.buffer.cursor_line;
-            if self.mode == EditorMode::VisualLine {
-                selection.end_col = self.buffer.lines.get(self.buffer.cursor_line).map_or(0, |l| l.len());
-            } else {
-                selection.end_col = self.buffer.cursor_col;
+            if self.current_pane == Pane::Request {
+                selection.end_line = self.buffer.cursor_line;
+                if self.mode == EditorMode::VisualLine {
+                    selection.end_col = self.buffer.lines.get(self.buffer.cursor_line).map_or(0, |l| l.len());
+                } else {
+                    selection.end_col = self.buffer.cursor_col;
+                }
+            } else if let Some(ref response) = self.response_buffer {
+                selection.end_line = response.cursor_line;
+                if self.mode == EditorMode::VisualLine {
+                    selection.end_col = response.lines.get(response.cursor_line).map_or(0, |l| l.len());
+                } else {
+                    selection.end_col = response.cursor_col;
+                }
             }
         }
     }
@@ -1208,9 +1647,18 @@ impl VimRepl {
         let start_col = if selection.start_line == start_line { selection.start_col } else { selection.end_col };
         let end_col = if selection.end_line == end_line { selection.end_col } else { selection.start_col };
 
+        // Choose the appropriate lines based on current pane
+        let lines = if self.current_pane == Pane::Request {
+            &self.buffer.lines
+        } else if let Some(ref response) = self.response_buffer {
+            &response.lines
+        } else {
+            return String::new();
+        };
+
         if start_line == end_line {
             // Single line selection
-            if let Some(line) = self.buffer.lines.get(start_line) {
+            if let Some(line) = lines.get(start_line) {
                 let start_idx = start_col.min(end_col);
                 let end_idx = start_col.max(end_col);
                 return line[start_idx..end_idx.min(line.len())].to_string();
@@ -1218,7 +1666,7 @@ impl VimRepl {
         } else {
             // Multi-line selection
             let mut result = String::new();
-            for (i, line) in self.buffer.lines.iter().enumerate().skip(start_line).take(end_line - start_line + 1) {
+            for (i, line) in lines.iter().enumerate().skip(start_line).take(end_line - start_line + 1) {
                 if i == start_line {
                     result.push_str(&line[start_col..]);
                 } else if i == end_line {
@@ -1283,11 +1731,21 @@ impl VimRepl {
                     self.response_buffer = None;
                     self.current_pane = Pane::Request;
                     self.pane_split_ratio = 1.0; // Give full space to input pane
-                    self.status_message = "Output pane hidden".to_string();
                 } else {
-                    self.status_message = "Goodbye!".to_string();
                     return Ok(true);
                 }
+            }
+            "q!" | "quit!" => {
+                // Force quit - exit immediately without any checks
+                return Ok(true);
+            }
+            "x" | "execute" => {
+                // Clear any existing response pane first
+                self.response_buffer = None;
+                // Execute the request in the request pane
+                if self.current_pane == Pane::Request || self.response_buffer.is_none() {
+                    self.execute_request().await?;
+                } 
             }
             "clear" => {
                 self.response_buffer = None;
@@ -1295,10 +1753,9 @@ impl VimRepl {
             }
             "verbose" => {
                 self.verbose = !self.verbose;
-                self.status_message = format!("Verbose mode: {}", if self.verbose { "on" } else { "off" });
             }
             _ => {
-                if self.command_buffer.starts_with("set ") {
+                if self.command_buffer.starts_with("head ") {
                     let parts: Vec<&str> = self.command_buffer.splitn(3, ' ').collect();
                     if parts.len() >= 3 {
                         let key = parts[1].to_string();
@@ -1306,7 +1763,7 @@ impl VimRepl {
                         self.session_headers.insert(key.clone(), value.clone());
                         self.status_message = format!("Header set: {} = {}", key, value);
                     }
-                } else if self.command_buffer.starts_with("unset ") {
+                } else if self.command_buffer.starts_with("unhead ") {
                     let parts: Vec<&str> = self.command_buffer.splitn(2, ' ').collect();
                     if parts.len() >= 2 {
                         let key = parts[1].to_string();
@@ -1359,10 +1816,16 @@ impl VimRepl {
             headers: self.session_headers.clone(),
         };
         
-        self.status_message = "Executing request...".to_string();
+        // Start timing the request
+        self.request_start_time = Some(Instant::now());
         
         match self.client.request(&cmd).await {
             Ok(response) => {
+                // Calculate request duration
+                if let Some(start_time) = self.request_start_time.take() {
+                    self.last_request_duration = Some(start_time.elapsed().as_millis() as u64);
+                }
+                
                 let status = response.status();
                 let headers = response.headers();
                 let body = response.body();
@@ -1374,7 +1837,6 @@ impl VimRepl {
                 ));
                 
                 let mut response_text = String::new();
-                response_text.push_str(&format!("HTTP {} {}\n", status.as_u16(), status.canonical_reason().unwrap_or("")));
                 
                 if self.verbose {
                     response_text.push_str("Headers:\n");
@@ -1395,9 +1857,13 @@ impl VimRepl {
                 if self.pane_split_ratio >= 1.0 {
                     self.pane_split_ratio = 0.5;
                 }
-                self.status_message = format!("Request completed: {}", status.as_u16());
             }
             Err(e) => {
+                // Calculate request duration
+                if let Some(start_time) = self.request_start_time.take() {
+                    self.last_request_duration = Some(start_time.elapsed().as_millis() as u64);
+                }
+                
                 self.last_response_status = Some("Error".to_string());
                 self.status_message = format!("Request failed: {}", e);
                 self.response_buffer = Some(ResponseBuffer::new(format!("Error: {}", e)));
@@ -1409,6 +1875,42 @@ impl VimRepl {
         }
         
         Ok(())
+    }
+
+    fn is_position_selected(&self, line: usize, col: usize) -> bool {
+        if let Some(ref selection) = self.visual_selection {
+            let start_line = selection.start_line.min(selection.end_line);
+            let end_line = selection.start_line.max(selection.end_line);
+            let (start_col, end_col) = if selection.start_line == start_line {
+                (selection.start_col, selection.end_col)
+            } else {
+                (selection.end_col, selection.start_col)
+            };
+
+            if self.mode == EditorMode::VisualLine {
+                // In visual line mode, select entire lines
+                line >= start_line && line <= end_line
+            } else {
+                // In visual mode, select character range
+                if line < start_line || line > end_line {
+                    false
+                } else if start_line == end_line {
+                    // Single line selection
+                    col >= start_col.min(end_col) && col < start_col.max(end_col)
+                } else {
+                    // Multi-line selection
+                    if line == start_line {
+                        col >= start_col
+                    } else if line == end_line {
+                        col < end_col
+                    } else {
+                        true // Middle lines are fully selected
+                    }
+                }
+            }
+        } else {
+            false
+        }
     }
 
     fn render(&self) -> Result<()> {
@@ -1506,23 +2008,36 @@ impl VimRepl {
                 }
                 print!("{:>width$} ", line_idx + 1, width = line_num_width);
                 
-                // Render line content
+                // Render line content with visual selection highlighting
                 if let Some(line) = self.buffer.lines.get(line_idx) {
-                    if active {
-                        execute!(io::stdout(), SetForegroundColor(Color::White))?;
-                    } else {
-                        execute!(io::stdout(), SetForegroundColor(Color::DarkGrey))?;
-                    }
-                    
                     let display_line = if line.len() > content_width {
                         &line[..content_width]
                     } else {
                         line
                     };
-                    print!("{}", display_line);
                     
-                    // Clear the rest of the line to avoid artifacts
-                    let used_width = line_num_width + 1 + display_line.len();
+                    // Render character by character to handle visual selection
+                    for (col_idx, ch) in display_line.chars().enumerate() {
+                        let is_selected = self.is_position_selected(line_idx, col_idx);
+                        
+                        if is_selected && (self.mode == EditorMode::Visual || self.mode == EditorMode::VisualLine) {
+                            // Highlight selected text
+                            execute!(io::stdout(), SetBackgroundColor(Color::White))?;
+                            execute!(io::stdout(), SetForegroundColor(Color::Black))?;
+                        } else {
+                            execute!(io::stdout(), crossterm::style::ResetColor)?;
+                            if active {
+                                execute!(io::stdout(), SetForegroundColor(Color::White))?;
+                            } else {
+                                execute!(io::stdout(), SetForegroundColor(Color::DarkGrey))?;
+                            }
+                        }
+                        print!("{}", ch);
+                    }
+                    
+                    // Reset colors and clear the rest of the line to avoid artifacts
+                    execute!(io::stdout(), crossterm::style::ResetColor)?;
+                    let used_width = line_num_width + 1 + display_line.chars().count();
                     if used_width < width {
                         print!("{}", " ".repeat(width - used_width));
                     }
@@ -1562,23 +2077,36 @@ impl VimRepl {
                 }
                 print!("{:>width$} ", line_idx + 1, width = line_num_width);
                 
-                // Render line content
+                // Render line content with visual selection highlighting
                 if let Some(line) = response.lines.get(line_idx) {
-                    if active {
-                        execute!(io::stdout(), SetForegroundColor(Color::White))?;
-                    } else {
-                        execute!(io::stdout(), SetForegroundColor(Color::DarkGrey))?;
-                    }
-                    
                     let display_line = if line.len() > content_width {
                         &line[..content_width]
                     } else {
                         line
                     };
-                    print!("{}", display_line);
                     
-                    // Clear the rest of the line to avoid artifacts
-                    let used_width = line_num_width + 1 + display_line.len();
+                    // Render character by character to handle visual selection
+                    for (col_idx, ch) in display_line.chars().enumerate() {
+                        let is_selected = self.current_pane == Pane::Response && self.is_position_selected(line_idx, col_idx);
+                        
+                        if is_selected && (self.mode == EditorMode::Visual || self.mode == EditorMode::VisualLine) {
+                            // Highlight selected text
+                            execute!(io::stdout(), SetBackgroundColor(Color::White))?;
+                            execute!(io::stdout(), SetForegroundColor(Color::Black))?;
+                        } else {
+                            execute!(io::stdout(), crossterm::style::ResetColor)?;
+                            if active {
+                                execute!(io::stdout(), SetForegroundColor(Color::White))?;
+                            } else {
+                                execute!(io::stdout(), SetForegroundColor(Color::DarkGrey))?;
+                            }
+                        }
+                        print!("{}", ch);
+                    }
+                    
+                    // Reset colors and clear the rest of the line to avoid artifacts
+                    execute!(io::stdout(), crossterm::style::ResetColor)?;
+                    let used_width = line_num_width + 1 + display_line.chars().count();
                     if used_width < width {
                         print!("{}", " ".repeat(width - used_width));
                     }
@@ -1601,37 +2129,53 @@ impl VimRepl {
         execute!(io::stdout(), SetBackgroundColor(Color::DarkBlue))?;
         execute!(io::stdout(), SetForegroundColor(Color::White))?;
         
-        let mode_str = match self.mode {
-            EditorMode::Normal => "NORMAL",
-            EditorMode::Insert => "INSERT",
-            EditorMode::Command => "COMMAND",
-            EditorMode::Visual => "VISUAL",
-            EditorMode::VisualLine => "VISUAL LINE",
-        };
-        
-        let status = if let Some(ref response_status) = self.last_response_status {
-            format!(" {} | {} | {} | {}", mode_str, self.current_pane_name(), response_status, self.status_message)
+        // Handle command mode display
+        let left_content = if self.mode == EditorMode::Command {
+            format!(":{}", self.command_buffer)
         } else {
-            format!(" {} | {} | {}", mode_str, self.current_pane_name(), self.status_message)
+            String::new()
         };
         
-        let padded_status = if status.len() > width {
-            status[..width].to_string()
+        // Create right-aligned status content
+        let mut right_content = String::new();
+        
+        if let Some(ref response_status) = self.last_response_status {
+            right_content.push_str(response_status);
+            
+            if let Some(duration) = self.last_request_duration {
+                right_content.push_str(&format!(" ({}ms)", duration));
+            }
+        }
+        
+        // Calculate available space for padding between left and right content
+        let used_space = left_content.len() + right_content.len();
+        let padding = if used_space < width {
+            width - used_space
         } else {
-            format!("{}{}", status, " ".repeat(width - status.len()))
+            0
         };
         
-        print!("{}", padded_status);
+        // Create the full status line
+        let status_line = format!("{}{}{}", left_content, " ".repeat(padding), right_content);
+        
+        // Truncate if too long
+        let final_status = if status_line.len() > width {
+            if left_content.len() > width {
+                // If command is longer than width, show only command (truncated)
+                left_content[..width].to_string()
+            } else {
+                // Show command + as much right content as fits
+                let remaining_space = width - left_content.len();
+                format!("{}{}", left_content, " ".repeat(remaining_space))
+            }
+        } else {
+            status_line
+        };
+        
+        print!("{}", final_status);
         execute!(io::stdout(), ResetColor)?;
         
         Ok(())
-    }
-
-    fn current_pane_name(&self) -> &str {
-        match self.current_pane {
-            Pane::Request => "Request",
-            Pane::Response => "Response",
-        }
     }
 
     fn get_response_pane_height(&self) -> usize {
@@ -1683,7 +2227,6 @@ impl VimRepl {
         if current_input_height > min_input_height {
             let new_input_height = (current_input_height - 1).max(min_input_height);
             self.pane_split_ratio = new_input_height as f64 / total_content_height as f64;
-            self.status_message = format!("Input pane shrunk to {} lines", new_input_height);
         }
     }
 
@@ -1697,7 +2240,6 @@ impl VimRepl {
             let new_output_height = (current_output_height - 1).max(min_output_height);
             let new_input_height = total_content_height - new_output_height;
             self.pane_split_ratio = new_input_height as f64 / total_content_height as f64;
-            self.status_message = format!("Output pane shrunk to {} lines", new_output_height);
         }
     }
 
