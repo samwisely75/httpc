@@ -595,13 +595,6 @@ jobs:
           git add Formula/httpc.rb
           git commit -m "httpc ${VERSION}"
           git push
-          
-          # Commit and push the changes
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/httpc.rb
-          git commit -m "httpc ${VERSION}"
-          git push
 
   # publish-crates-io:
   #   name: Publish to Crates.io
