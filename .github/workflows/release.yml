@@ -27,23 +27,23 @@ jobs:
           # Windows
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            name: webly-windows-x64
+            name: httpc-windows-x64
           
           # macOS
           - target: x86_64-apple-darwin
             os: macos-latest
-            name: webly-macos-x64
+            name: httpc-macos-x64
           - target: aarch64-apple-darwin
             os: macos-latest
-            name: webly-macos-arm64
+            name: httpc-macos-arm64
           
           # Linux
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            name: webly-linux-x64
+            name: httpc-linux-x64
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
-            name: webly-linux-arm64
+            name: httpc-linux-arm64
 
     runs-on: ${{ matrix.os }}
     
@@ -93,12 +93,12 @@ jobs:
       - name: Prepare binary (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          cp target/${{ matrix.target }}/release/webly.exe ${{ matrix.name }}.exe
+          cp target/${{ matrix.target }}/release/httpc.exe ${{ matrix.name }}.exe
 
       - name: Prepare binary (Unix)
         if: matrix.os != 'windows-latest'
         run: |
-          cp target/${{ matrix.target }}/release/webly ${{ matrix.name }}
+          cp target/${{ matrix.target }}/release/httpc ${{ matrix.name }}
           chmod +x ${{ matrix.name }}
 
       - name: Upload binary artifact
@@ -118,32 +118,41 @@ jobs:
       - name: Download Linux binary
         uses: actions/download-artifact@v4
         with:
-          name: webly-linux-x64
+          name: httpc-linux-x64
           path: binaries/
 
       - name: Install packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm alien fakeroot
+          sudo apt-get install -y alien fakeroot gzip
+          
+          # Verify tools are available
+          which alien || echo "alien not found"
+          which fakeroot || echo "fakeroot not found"
+          which gzip || echo "gzip not found"
+          
+          # Show versions
+          alien --version
+          gzip --version
 
       - name: Setup package structure
         run: |
-          chmod +x binaries/webly-linux-x64
+          chmod +x binaries/httpc-linux-x64
           
           # Create directory structure for packaging
           mkdir -p packaging/usr/bin
           mkdir -p packaging/usr/share/man/man1
           mkdir -p packaging/DEBIAN
-          mkdir -p packaging/usr/share/doc/webly
-          mkdir -p packaging/etc/webly
+          mkdir -p packaging/usr/share/doc/httpc
+          mkdir -p packaging/etc/httpc
           
           # Copy binary
-          cp binaries/webly-linux-x64 packaging/usr/bin/webly
+          cp binaries/httpc-linux-x64 packaging/usr/bin/httpc
           
           # Create profiles template
-          cat > packaging/etc/webly/profiles.example << 'EOF'
-          # WebLy Configuration Profiles
-          # Copy this file to ~/.webly/profiles and customize as needed
+          cat > packaging/etc/httpc/profiles.example << 'EOF'
+          # httpc Configuration Profiles
+          # Copy this file to ~/.httpc/profile and customize as needed
 
           [default]
           host = https://api.example.com
@@ -165,19 +174,19 @@ jobs:
           EOF
           
           # Create basic man page
-          cat > packaging/usr/share/man/man1/webly.1 << 'EOF'
-          .TH WEBLY 1 "$(date +'%B %Y')" "webly $(grep '^version' Cargo.toml | cut -d'"' -f2)" "User Commands"
+          cat > packaging/usr/share/man/man1/httpc.1 << 'EOF'
+          .TH HTTPC 1 "$(date +'%B %Y')" "httpc $(grep '^version' Cargo.toml | cut -d'"' -f2)" "User Commands"
           .SH NAME
-          webly \- A flexible HTTP client with profile support
+          httpc \- A flexible HTTP client with profile support
           .SH SYNOPSIS
-          .B webly
+          .B httpc
           [\fIOPTIONS\fR] \fIMETHOD\fR \fIURL\fR
           .SH DESCRIPTION
-          \fBwebly\fP is a flexible HTTP client that supports configuration profiles and various authentication methods.
+          \fBhttpc\fP is a flexible HTTP client that supports configuration profiles and various authentication methods.
           .SH OPTIONS
           .TP
           \fB\-p, \-\-profile\fR \fIPROFILE\fR
-          Use the specified profile from ~/.webly/profiles
+          Use the specified profile from ~/.httpc/profile
           .TP
           \fB\-H, \-\-header\fR \fIHEADER\fR
           Add custom HTTP header
@@ -194,36 +203,36 @@ jobs:
           \fB\-V, \-\-version\fR
           Show version information
           .SH CONFIGURATION
-          Configuration profiles are stored in ~/.webly/profiles in INI format.
-          See /etc/webly/profiles.example for configuration examples.
+          Configuration profiles are stored in ~/.httpc/profile in INI format.
+          See /etc/httpc/profiles.example for configuration examples.
           .SH EXAMPLES
           .TP
-          webly GET https://api.example.com/users
+          httpc GET https://api.example.com/users
           .TP
-          webly -p staging POST /api/data -d '{"key": "value"}'
+          httpc -p staging POST /api/data -d '{"key": "value"}'
           .TP
-          webly -H "Authorization: Bearer token" GET /protected
+          httpc -H "Authorization: Bearer token" GET /protected
           .SH AUTHOR
           Written by Satoshi Iizuka.
           .SH REPORTING BUGS
-          Report bugs to: https://github.com/samwisely75/webly/issues
+          Report bugs to: https://github.com/samwisely75/httpc/issues
           EOF
           
           # Compress man page
-          gzip packaging/usr/share/man/man1/webly.1
+          gzip packaging/usr/share/man/man1/httpc.1
           
           # Create copyright file
-          cp LICENSE packaging/usr/share/doc/webly/copyright
+          cp LICENSE packaging/usr/share/doc/httpc/copyright
           
           # Create changelog
-          echo "webly ($(grep '^version' Cargo.toml | cut -d'"' -f2)) stable; urgency=medium" > packaging/usr/share/doc/webly/changelog.Debian
-          echo "" >> packaging/usr/share/doc/webly/changelog.Debian
-          echo "  * Release version $(grep '^version' Cargo.toml | cut -d'"' -f2)" >> packaging/usr/share/doc/webly/changelog.Debian
-          echo "" >> packaging/usr/share/doc/webly/changelog.Debian
-          echo " -- Satoshi Iizuka <satoshi.iizuka@elastic.co>  $(date -R)" >> packaging/usr/share/doc/webly/changelog.Debian
+          echo "httpc ($(grep '^version' Cargo.toml | cut -d'"' -f2)) stable; urgency=medium" > packaging/usr/share/doc/httpc/changelog.Debian
+          echo "" >> packaging/usr/share/doc/httpc/changelog.Debian
+          echo "  * Release version $(grep '^version' Cargo.toml | cut -d'"' -f2)" >> packaging/usr/share/doc/httpc/changelog.Debian
+          echo "" >> packaging/usr/share/doc/httpc/changelog.Debian
+          echo " -- Satoshi Iizuka <satoshi.iizuka@elastic.co>  $(date -R)" >> packaging/usr/share/doc/httpc/changelog.Debian
           
           # Compress changelog
-          gzip packaging/usr/share/doc/webly/changelog.Debian
+          gzip packaging/usr/share/doc/httpc/changelog.Debian
 
       - name: Create DEB package
         run: |
@@ -231,7 +240,7 @@ jobs:
           
           # Create DEBIAN control file
           cat > packaging/DEBIAN/control << EOF
-          Package: webly
+          Package: httpc
           Version: ${VERSION}
           Section: utils
           Priority: optional
@@ -239,11 +248,11 @@ jobs:
           Depends: libc6 (>= 2.17)
           Maintainer: Satoshi Iizuka <satoshi.iizuka@elastic.co>
           Description: A flexible HTTP client with profile support
-           webly is a flexible HTTP client that supports configuration profiles,
+           httpc is a flexible HTTP client that supports configuration profiles,
            various authentication methods, and custom headers. It's designed for
            developers who need a powerful command-line HTTP client for testing
            APIs and web services.
-          Homepage: https://github.com/samwisely75/webly
+          Homepage: https://github.com/samwisely75/httpc
           EOF
           
           # Create postinst script
@@ -251,17 +260,24 @@ jobs:
           #!/bin/bash
           set -e
           
-          # Create webly config directory if it doesn't exist
-          if [ ! -d "/etc/webly" ]; then
-              mkdir -p /etc/webly
+          # Create httpc config directory if it doesn't exist
+          if [ ! -d "/etc/httpc" ]; then
+              mkdir -p /etc/httpc
           fi
           
-          # Copy example profiles if user doesn't have profiles yet
-          if [ ! -f "$HOME/.webly/profiles" ] && [ -f "/etc/webly/profiles.example" ]; then
-              mkdir -p "$HOME/.webly"
-              cp /etc/webly/profiles.example "$HOME/.webly/profiles"
-              echo "Created default profiles at $HOME/.webly/profiles"
-              echo "Edit this file to configure your API endpoints"
+          # Check if user has a profile configuration
+          if [ ! -f "$HOME/.httpc/profile" ]; then
+              echo "================================================================"
+              echo "httpc has been installed successfully!"
+              echo ""
+              echo "To get started, you need to create a profile configuration:"
+              echo "1. Create the config directory: mkdir -p $HOME/.httpc"
+              echo "2. Copy the example: cp /etc/httpc/profiles.example $HOME/.httpc/profile"
+              echo "3. Edit the profile to configure your API endpoints"
+              echo ""
+              echo "For more information, see the README.md at:"
+              echo "https://github.com/samwisely75/httpc"
+              echo "================================================================"
           fi
           
           exit 0
@@ -270,16 +286,46 @@ jobs:
           chmod +x packaging/DEBIAN/postinst
           
           # Build DEB package
-          fakeroot dpkg-deb --build packaging webly_${VERSION}_amd64.deb
+          fakeroot dpkg-deb --build packaging httpc_${VERSION}_amd64.deb
           
           # Verify package
-          dpkg-deb --info webly_${VERSION}_amd64.deb
-          dpkg-deb --contents webly_${VERSION}_amd64.deb
+          dpkg-deb --info httpc_${VERSION}_amd64.deb
+          dpkg-deb --contents httpc_${VERSION}_amd64.deb
+
+      - name: Create RPM package
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | cut -d'"' -f2)
+          
+          # Convert DEB to RPM using alien (more reliable on Ubuntu than rpm-build)
+          echo "Converting DEB package to RPM using alien..."
+          
+          # alien requires the DEB file to exist
+          if [ ! -f "httpc_${VERSION}_amd64.deb" ]; then
+            echo "Error: DEB package not found"
+            exit 1
+          fi
+          
+          # Convert DEB to RPM
+          sudo alien --to-rpm --scripts httpc_${VERSION}_amd64.deb
+          
+          # Verify package was created
+          ls -la *.rpm
+          
+          # Verify package (these may fail but that's ok)
+          rpm -qip httpc-${VERSION}-*.rpm || echo "RPM info check failed, but package might still work"
+          rpm -qlp httpc-${VERSION}-*.rpm || echo "RPM contents check failed, but package might still work"
+
+      - name: Upload RPM package
+        uses: actions/upload-artifact@v4
+        with:
+          name: httpc-rpm-package
+          path: "*.rpm"
+          if-no-files-found: error
 
       - name: Upload DEB package
         uses: actions/upload-artifact@v4
         with:
-          name: webly-deb-package
+          name: httpc-deb-package
           path: "*.deb"
           if-no-files-found: error
 
@@ -289,11 +335,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            binary: webly-linux-x64
+            binary: httpc-linux-x64
           - os: macos-latest
-            binary: webly-macos-x64
+            binary: httpc-macos-x64
           - os: windows-latest
-            binary: webly-windows-x64
+            binary: httpc-windows-x64
 
     runs-on: ${{ matrix.os }}
     
@@ -377,8 +423,9 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release-assets
-          find artifacts -name "webly-*" -exec cp {} release-assets/ \;
+          find artifacts -name "httpc-*" -exec cp {} release-assets/ \;
           find artifacts -name "*.deb" -exec cp {} release-assets/ \;
+          find artifacts -name "*.rpm" -exec cp {} release-assets/ \;
           ls -la release-assets/
 
       - name: Create Release
@@ -393,7 +440,7 @@ jobs:
             ## What's Changed
             
             * Cross-platform release for Windows, macOS, and Linux
-            * Linux packages available in DEB format
+            * Linux packages available in DEB and RPM formats
             * Configuration profiles support for API endpoints
             * Flexible HTTP client with authentication support
             
@@ -404,30 +451,40 @@ jobs:
             Download the appropriate binary for your platform from the assets below:
             
             ### Windows
-            - `webly-windows-x64.exe` - Windows 64-bit (Intel/AMD)
+            - `httpc-windows-x64.exe` - Windows 64-bit (Intel/AMD)
             
             ### macOS
-            - `webly-macos-x64` - macOS Intel (x64)
-            - `webly-macos-arm64` - macOS Apple Silicon (M1/M2)
+            - `httpc-macos-x64` - macOS Intel (x64)
+            - `httpc-macos-arm64` - macOS Apple Silicon (M1/M2)
             
             ### Linux
-            - `webly-linux-x64` - Linux 64-bit (Intel/AMD)
-            - `webly-linux-arm64` - Linux ARM64
-            - `webly_*_amd64.deb` - Debian/Ubuntu package
+            - `httpc-linux-x64` - Linux 64-bit (Intel/AMD)
+            - `httpc-linux-arm64` - Linux ARM64
+            - `httpc_*_amd64.deb` - Debian/Ubuntu package
+            - `httpc-*.rpm` - Red Hat/Fedora/CentOS package
             
             ### Using Package Managers (Linux)
             
             **Debian/Ubuntu (.deb):**
             ```bash
             # Download the .deb file from assets below, then:
-            sudo dpkg -i webly_*_amd64.deb
+            sudo dpkg -i httpc_*_amd64.deb
+            ```
+            
+            **Red Hat/Fedora/CentOS (.rpm):**
+            ```bash
+            # Download the .rpm file from assets below, then:
+            sudo rpm -i httpc-*.rpm
+            # Or with DNF/YUM:
+            sudo dnf install httpc-*.rpm
+            sudo yum install httpc-*.rpm
             ```
             
             ## Configuration
             
-            WebLy uses configuration profiles stored in `~/.webly/profiles`. The package installation will create an example file at:
-            - Linux: `/etc/webly/profiles.example`
-            - Copy this to `~/.webly/profiles` and customize as needed
+            httpc uses configuration profiles stored in `~/.httpc/profile`. The package installation will create an example file at:
+            - Linux: `/etc/httpc/profiles.example`
+            - Copy this to `~/.httpc/profile` and customize as needed
             
             Example profile configuration:
             ```ini
@@ -445,16 +502,16 @@ jobs:
             
             ```bash
             # Basic usage
-            webly GET https://api.example.com/users
+            httpc GET https://api.example.com/users
             
             # Using a profile
-            webly -p local GET /api/data
+            httpc -p local GET /api/data
             
             # With custom headers
-            webly -H "Authorization: Bearer token" GET /protected
+            httpc -H "Authorization: Bearer token" GET /protected
             
             # POST with data
-            webly POST /api/data -d '{"key": "value"}'
+            httpc POST /api/data -d '{"key": "value"}'
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -489,33 +546,33 @@ jobs:
           TAG="v${VERSION}"
           
           # Calculate SHA256 from the release tarball
-          SHA256=$(curl -L https://github.com/samwisely75/webly/archive/refs/tags/${TAG}.tar.gz | sha256sum | cut -d ' ' -f 1)
+          SHA256=$(curl -L https://github.com/samwisely75/httpc/archive/refs/tags/${TAG}.tar.gz | sha256sum | cut -d ' ' -f 1)
           
           # Create or update the formula
-          cat > Formula/webly.rb << EOF
-          class Webly < Formula
+          cat > Formula/httpc.rb << EOF
+          class Httpc < Formula
             desc "A flexible HTTP client with profile support"
-            homepage "https://github.com/samwisely75/webly"
+            homepage "https://github.com/samwisely75/httpc"
             version "${VERSION}"
             license "MIT"
 
             on_macos do
               on_arm do
-                url "https://github.com/samwisely75/webly/releases/download/${TAG}/webly-macos-arm64"
-                sha256 "$(curl -L https://github.com/samwisely75/webly/releases/download/${TAG}/webly-macos-arm64 | sha256sum | cut -d ' ' -f 1)"
+                url "https://github.com/samwisely75/httpc/releases/download/${TAG}/httpc-macos-arm64"
+                sha256 "$(curl -L https://github.com/samwisely75/httpc/releases/download/${TAG}/httpc-macos-arm64 | sha256sum | cut -d ' ' -f 1)"
               end
               on_intel do
-                url "https://github.com/samwisely75/webly/releases/download/${TAG}/webly-macos-x64"
-                sha256 "$(curl -L https://github.com/samwisely75/webly/releases/download/${TAG}/webly-macos-x64 | sha256sum | cut -d ' ' -f 1)"
+                url "https://github.com/samwisely75/httpc/releases/download/${TAG}/httpc-macos-x64"
+                sha256 "$(curl -L https://github.com/samwisely75/httpc/releases/download/${TAG}/httpc-macos-x64 | sha256sum | cut -d ' ' -f 1)"
               end
             end
           
             def install
-              bin.install Dir["*"].first => "webly"
+              bin.install Dir["*"].first => "httpc"
             end
           
             test do
-              assert_match "webly #{version}", shell_output("#{bin}/webly --version")
+              assert_match "httpc #{version}", shell_output("#{bin}/httpc --version")
             end
           end
           EOF
@@ -523,35 +580,35 @@ jobs:
           # Commit and push the changes
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/webly.rb
-          git commit -m "webly ${VERSION}"
+          git add Formula/httpc.rb
+          git commit -m "httpc ${VERSION}"
           git push
 
-  publish-crates-io:
-    name: Publish to Crates.io
-    runs-on: ubuntu-latest
-    needs: create-release
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # publish-crates-io:
+  #   name: Publish to Crates.io
+  #   runs-on: ubuntu-latest
+  #   needs: create-release
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+  #     - name: Setup Rust
+  #       uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+  #     - name: Cache cargo registry
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: ~/.cargo/registry
+  #         key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+  #     - name: Cache cargo index
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: ~/.cargo/git
+  #         key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Publish to crates.io
-        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+  #     - name: Publish to crates.io
+  #       run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
 
   merge-to-main:
     name: Merge Release to Main

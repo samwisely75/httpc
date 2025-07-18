@@ -1,11 +1,9 @@
-# webly
+# httpc
 
 [![License](https://img.shields.io/badge/license-Elastic%20License%202.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/github/v/release/samwisely75/webly)](https://github.com/samwisely75/webly/releases)
-[![Crates.io](https://img.shields.io/crates/v/webly.svg)](https://crates.io/crates/webly)
-[![Downloads](https://img.shields.io/crates/d/webly.svg)](https://crates.io/crates/webly)
-[![CI](https://github.com/samwisely75/webly/actions/workflows/ci.yml/badge.svg)](https://github.com/samwisely75/webly/actions/workflows/ci.yml)
-[![Release](https://github.com/samwisely75/webly/actions/workflows/release.yml/badge.svg)](https://github.com/samwisely75/webly/actions/workflows/release.yml)
+[![Version](https://img.shields.io/github/v/release/samwisely75/httpc)](https://github.com/samwisely75/httpc/releases)
+[![CI](https://github.com/samwisely75/httpc/actions/workflows/ci.yml/badge.svg)](https://github.com/samwisely75/httpc/actions/workflows/ci.yml)
+[![Release](https://github.com/samwisely75/httpc/actions/workflows/release.yml/badge.svg)](https://github.com/samwisely75/httpc/actions/workflows/release.yml)
 
 A lightweight, profile-based HTTP client that allows you to talk to web servers with minimal effort. Think of it as `curl` with persistent profile and simplified syntax.
 
@@ -18,12 +16,12 @@ A lightweight, profile-based HTTP client that allows you to talk to web servers 
 - [Usage](#usage)
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
-- [Why webly and not curl?](#why-webly-and-not-curl)
+- [Why httpc and not curl?](#why-httpc-and-not-curl)
 - [License](#license)
 
 ## Features
 
-**Profile-based simplicity** - Transform complex curl commands into simple, memorable requests. Store connection details, authentication, and headers in `~/.webly/profile` once, then use clean relative URLs like `webly -p prod GET /api/users` instead of repeating lengthy curl parameters every time.
+**Profile-based simplicity** - Transform complex curl commands into simple, memorable requests. Store connection details, authentication, and headers in `~/.httpc/profile` once, then use clean relative URLs like `httpc -p prod GET /api/users` instead of repeating lengthy curl parameters every time.
 
 Plus all the HTTP client features you expect:
 
@@ -38,51 +36,51 @@ Plus all the HTTP client features you expect:
 
 ## Installation
 
-Download the appropriate binary from [releases](https://github.com/samwisely75/webly/releases) for your platform:
+Download the appropriate binary from [releases](https://github.com/samwisely75/httpc/releases) for your platform:
 
 **macOS (Homebrew):**
 
 ```bash
 # Install via Homebrew (easiest method for macOS)
-brew install samwisely75/tap/webly
+brew install samwisely75/tap/httpc
 ```
 
 **Linux/macOS (Manual):**
 
 ```bash
 # Download and extract
-curl -L https://github.com/samwisely75/webly/releases/latest/download/webly-linux-x64.tar.gz | tar -xz
-sudo mv webly /usr/local/bin/
+curl -L https://github.com/samwisely75/httpc/releases/latest/download/httpc-linux-x64.tar.gz | tar -xz
+sudo mv httpc /usr/local/bin/
 
 # Or for macOS
-curl -L https://github.com/samwisely75/webly/releases/latest/download/webly-macos-x64.tar.gz | tar -xz
-sudo mv webly /usr/local/bin/
+curl -L https://github.com/samwisely75/httpc/releases/latest/download/httpc-macos-x64.tar.gz | tar -xz
+sudo mv httpc /usr/local/bin/
 ```
 
 **From crates.io (requires Rust):**
 
 ```bash
-cargo install webly
+cargo install httpc
 ```
 
 **Build from source:**
 
 ```bash
-git clone https://github.com/samwisely75/webly.git
-cd webly
+git clone https://github.com/samwisely75/httpc.git
+cd httpc
 cargo build --release
-sudo cp target/release/webly /usr/local/bin/
+sudo cp target/release/httpc /usr/local/bin/
 ```
 
-Test the installation: `webly --help`
+Test the installation: `httpc --help`
 
-No additional dependencies required - webly is a single, self-contained binary.
+No additional dependencies required - httpc is a single, self-contained binary.
 
 ## Configuration
 
 ### Configuration File Location
 
-webly looks for configuration in `~/.webly/profile`.
+httpc looks for configuration in `~/.httpc/profile`.
 
 ### Configuration Format
 
@@ -96,7 +94,7 @@ password = your-password
 insecure = false
 ca_cert = /path/to/ca.pem
 @content-type = application/json
-@user-agent = webly/0.1
+@user-agent = httpc/0.1
 @accept = application/json
 @accept-encoding = gzip, deflate
 
@@ -137,11 +135,11 @@ Examples:
 
 ```bash
 # Use default profile
-webly GET /api/endpoint
+httpc GET /api/endpoint
 
 # Use specific profile
-webly -p staging GET /api/endpoint
-webly --profile production GET /api/endpoint
+httpc -p staging GET /api/endpoint
+httpc --profile production GET /api/endpoint
 ```
 
 ### Override with Command Line Options
@@ -150,10 +148,10 @@ Command line options override profile settings:
 
 ```bash
 # Override user from profile
-webly -p staging --user different-user GET /api/data
+httpc -p staging --user different-user GET /api/data
 
 # Override host entirely
-webly GET https://completely-different-host.com/api
+httpc GET https://completely-different-host.com/api
 ```
 
 ## Quick Start
@@ -161,29 +159,29 @@ webly GET https://completely-different-host.com/api
 1. **Create a profile for your favorite API:**
 
    ```bash
-   # Create ~/.webly directory and profile file
-   mkdir -p ~/.webly
+   # Create ~/.httpc directory and profile file
+   mkdir -p ~/.httpc
    echo "[swapi]
    host = https://swapi.dev/api
-   @content-type = application/json" > ~/.webly/profile
+   @content-type = application/json" > ~/.httpc/profile
    ```
 
 2. **Use the profile to explore the Star Wars universe:**
 
    ```bash
    # Now you can use short URLs to explore the galaxy!
-   webly -p swapi GET /people/1/        # Luke Skywalker
-   webly -p swapi GET /people/4/        # Darth Vader
-   webly -p swapi GET /starships/10/    # Millennium Falcon
-   webly -p swapi GET /films/1/         # A New Hope
+   httpc -p swapi GET /people/1/        # Luke Skywalker
+   httpc -p swapi GET /people/4/        # Darth Vader
+   httpc -p swapi GET /starships/10/    # Millennium Falcon
+   httpc -p swapi GET /films/1/         # A New Hope
    ```
 
 3. **Or override with full URLs when needed:**
 
    ```bash
    # You can always use absolute URLs to override the profile
-   webly GET https://httpbin.org/get
-   webly GET https://swapi.dev/api/planets/
+   httpc GET https://httpbin.org/get
+   httpc GET https://swapi.dev/api/planets/
    ```
 
 ## Usage
@@ -194,19 +192,19 @@ The simplest usage is to make a request to any URL:
 
 ```bash
 # GET request
-webly GET https://httpbin.org/get
+httpc GET https://httpbin.org/get
 
 # POST request with JSON data
-webly POST https://httpbin.org/post '{
+httpc POST https://httpbin.org/post '{
     "name": "John Doe",
     "email": "john@example.com"
 }'
 
 # PUT request
-webly PUT https://httpbin.org/put '{"status": "updated"}'
+httpc PUT https://httpbin.org/put '{"status": "updated"}'
 
 # DELETE request
-webly DELETE https://httpbin.org/delete
+httpc DELETE https://httpbin.org/delete
 ```
 
 ### Using Standard Input
@@ -215,10 +213,10 @@ You can pass request body via standard input:
 
 ```bash
 # From file
-cat data.json | webly POST https://api.example.com/users
+cat data.json | httpc POST https://api.example.com/users
 
 # From command output
-echo '{"query": {"match_all": {}}}' | webly POST https://elasticsearch.example.com/my-index/_search
+echo '{"query": {"match_all": {}}}' | httpc POST https://elasticsearch.example.com/my-index/_search
 
 # Complex pipeline example
 echo '{
@@ -230,7 +228,7 @@ echo '{
             }
         }
     }
-}' | webly GET my-index/_search | jq '.hits.hits[]._source.name'
+}' | httpc GET my-index/_search | jq '.hits.hits[]._source.name'
 ```
 
 ### Profile-Based Requests
@@ -239,29 +237,29 @@ Use profile to avoid repeating connection details:
 
 ```bash
 # Use default profile
-webly GET /api/users
+httpc GET /api/users
 
 # Use specific profile
-webly -p staging GET /api/users
-webly -p production GET /health
+httpc -p staging GET /api/users
+httpc -p production GET /health
 ```
 
 ### Authentication & Headers
 
 ```bash
 # Basic authentication
-webly GET https://api.example.com/protected \
+httpc GET https://api.example.com/protected \
     --user admin \
     --password secret
 
 # Custom headers
-webly POST https://api.example.com/data \
+httpc POST https://api.example.com/data \
     -H "Authorization: Bearer your-token" \
     -H "X-Custom-Header: value" \
     '{"data": "value"}'
 
 # SSL options
-webly GET https://self-signed.example.com/api \
+httpc GET https://self-signed.example.com/api \
     --ca-cert /path/to/ca.pem \
     --insecure
 ```
@@ -270,14 +268,14 @@ webly GET https://self-signed.example.com/api \
 
 ```bash
 # Through proxy
-webly GET https://api.example.com/data \
+httpc GET https://api.example.com/data \
     --proxy http://proxy.company.com:8080
 
 # Verbose mode for debugging
-webly -v GET https://api.example.com/debug
+httpc -v GET https://api.example.com/debug
 
 # Override profile settings
-webly -p production GET /api/data \
+httpc -p production GET /api/data \
     --user different-user \
     --password different-pass
 ```
@@ -288,14 +286,14 @@ When using special characters in URLs or query parameters, you may need to escap
 
 ```bash
 # Query parameters with special characters - escape or quote
-webly GET "/api/search?q=hello world&sort=date"
-webly GET /api/search\?q=hello\ world\&sort=date
+httpc GET "/api/search?q=hello world&sort=date"
+httpc GET /api/search\?q=hello\ world\&sort=date
 
 # Complex URLs with fragments
-webly GET "https://api.example.com/items?filter=status:active&limit=10#results"
+httpc GET "https://api.example.com/items?filter=status:active&limit=10#results"
 
 # JSON with special characters in URLs
-webly POST "/api/items?category=tools&type=screws" '{
+httpc POST "/api/items?category=tools&type=screws" '{
     "name": "Phillips head screw",
     "size": "M4"
 }'
@@ -306,7 +304,7 @@ webly POST "/api/items?category=tools&type=screws" '{
 For all available options, run:
 
 ```bash
-webly --help
+httpc --help
 ```
 
 ## Examples
@@ -315,8 +313,8 @@ webly --help
 
 ```bash
 # Test REST API endpoints
-webly GET https://jsonplaceholder.typicode.com/posts/1
-webly POST https://jsonplaceholder.typicode.com/posts '{
+httpc GET https://jsonplaceholder.typicode.com/posts/1
+httpc POST https://jsonplaceholder.typicode.com/posts '{
     "title": "My Post",
     "body": "Post content",
     "userId": 1
@@ -327,34 +325,34 @@ webly POST https://jsonplaceholder.typicode.com/posts '{
 
 ```bash
 # JSON API
-webly POST https://api.example.com/users \
+httpc POST https://api.example.com/users \
     -H "Content-Type: application/json" \
     '{"name": "John", "email": "john@example.com"}'
 
 # Form data
-webly POST https://api.example.com/form \
+httpc POST https://api.example.com/form \
     -H "Content-Type: application/x-www-form-urlencoded" \
     'name=John&email=john@example.com'
 
 # File upload simulation
-cat document.json | webly PUT https://api.example.com/documents/123
+cat document.json | httpc PUT https://api.example.com/documents/123
 ```
 
 ### Elasticsearch Examples
 
 ```bash
 # Check cluster health
-webly -p elastic GET /_cluster/health
+httpc -p elastic GET /_cluster/health
 
 # Search documents
 echo '{
     "query": {
         "match": {"title": "search term"}
     }
-}' | webly -p elastic GET /my-index/_search
+}' | httpc -p elastic GET /my-index/_search
 
 # Index a document
-webly -p elastic PUT /my-index/_doc/1 '{
+httpc -p elastic PUT /my-index/_doc/1 '{
     "title": "My Document",
     "content": "Document content here"
 }'
@@ -364,8 +362,8 @@ webly -p elastic PUT /my-index/_doc/1 '{
 
 ```bash
 # Set up profile for different environments
-mkdir -p ~/.webly
-cat > ~/.webly/profile << EOF
+mkdir -p ~/.httpc
+cat > ~/.httpc/profile << EOF
 [dev]
 host = http://localhost:3000
 @content-type = application/json
@@ -384,36 +382,36 @@ password = production-password
 EOF
 
 # Test the same endpoint across environments
-webly -p dev GET /api/health
-webly -p staging GET /api/health
-webly -p prod GET /api/health
+httpc -p dev GET /api/health
+httpc -p staging GET /api/health
+httpc -p prod GET /api/health
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-**Q: `webly: command not found`**
-A: Make sure webly is in your PATH. Try `which webly` or reinstall following the installation instructions.
+**Q: `httpc: command not found`**
+A: Make sure httpc is in your PATH. Try `which httpc` or reinstall following the installation instructions.
 
 **Q: SSL certificate errors**
 A: Use `--insecure` to skip certificate validation, or provide a CA certificate with `--ca-cert /path/to/ca.pem`.
 
 **Q: Profile not found**
-A: Check that `~/.webly/profile` exists and contains the profile. Use `webly -p nonexistent GET /` to see the error.
+A: Check that `~/.httpc/profile` exists and contains the profile. Use `httpc -p nonexistent GET /` to see the error.
 
 **Q: Authentication failures**
 A: Verify credentials in your profile or override with `--user` and `--password` flags.
 
 **Q: Request body from stdin not working**
-A: Make sure you're piping data correctly: `echo '{"key": "value"}' | webly POST /api/endpoint`
+A: Make sure you're piping data correctly: `echo '{"key": "value"}' | httpc POST /api/endpoint`
 
 ### Debug Mode
 
 Use verbose mode to see detailed request/response information:
 
 ```bash
-webly -v GET https://httpbin.org/get
+httpc -v GET https://httpbin.org/get
 ```
 
 This shows:
@@ -429,13 +427,13 @@ Check your configuration file:
 
 ```bash
 # View current configuration
-cat ~/.webly/profile
+cat ~/.httpc/profile
 
 # Test with a simple request
-webly -p your-profile GET /simple/endpoint
+httpc -p your-profile GET /simple/endpoint
 ```
 
-## Why webly and not curl?
+## Why httpc and not curl?
 
 I work with Elasticsearch clusters day in and day out. Kibana Dev Tools is ideal, but often unavailable in client environments where I need to SSH into nodes, check logs, and run diagnostic queries from the terminal.
 
@@ -481,8 +479,8 @@ Python and Bash scripts work but become unwieldy and hard to maintain. Sometimes
 2. **Build from source**
 
    ```bash
-   git clone https://github.com/samwisely75/webly.git
-   cd webly
+   git clone https://github.com/samwisely75/httpc.git
+   cd httpc
    cargo build
    ```
 

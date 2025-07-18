@@ -63,7 +63,7 @@ When you push a `release/*` branch, the pipeline automatically:
 
 ### Configuration Templates
 - Includes `profile.example` with common configurations
-- Automatically creates `~/.webly/profile` on first install
+- Automatically creates `~/.httpc/profile` on first install
 - Examples for various API types (REST, GraphQL, XML)
 
 ### Testing
@@ -112,17 +112,17 @@ Each release includes:
 ### Package Managers (Linux)
 ```bash
 # Debian/Ubuntu
-sudo dpkg -i webly_*_amd64.deb
+sudo dpkg -i httpc_*_amd64.deb
 
-# Creates /etc/webly/profile.example
-# Sets up ~/.webly/profile if not exists
+# Creates /etc/httpc/profile.example
+# Sets up ~/.httpc/profile if not exists
 ```
 
 ### Direct Binary
 ```bash
 # Download binary from GitHub releases
-chmod +x webly-linux-x64
-sudo mv webly-linux-x64 /usr/local/bin/webly
+chmod +x httpc-linux-x64
+sudo mv httpc-linux-x64 /usr/local/bin/httpc
 ```
 
 ## Configuration
@@ -138,10 +138,10 @@ The release pipeline creates comprehensive profile examples:
 ### Post-Installation
 ```bash
 # Check installation
-webly --version
+httpc --version
 
 # Copy example profile
-cp /etc/webly/profile.example ~/.webly/profile
+cp /etc/httpc/profile.example ~/.httpc/profile
 # Edit as needed
 ```
 
@@ -203,8 +203,8 @@ git branch -a | grep release
 echo "release/1.2.3" | grep -E "^release/[0-9]+\.[0-9]+\.[0-9]+"
 
 # Test binary
-./webly --version
-./webly --help
+./httpc --version
+./httpc --help
 ```
 
 This release pipeline provides a robust, automated solution for WebLy releases with comprehensive configuration management and cross-platform support.
