@@ -39,10 +39,10 @@ jobs:
           
           # Linux
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-18.04  # Use Ubuntu 18.04 for GLIBC 2.27 compatibility with RHEL 8.10
+            os: ubuntu-20.04  # Use Ubuntu 20.04 for better GLIBC compatibility (2.31 vs 2.35 in ubuntu-latest)
             name: httpc-linux-x64
           - target: aarch64-unknown-linux-gnu
-            os: ubuntu-18.04  # Use Ubuntu 18.04 for GLIBC 2.27 compatibility with RHEL 8.10
+            os: ubuntu-20.04  # Use Ubuntu 20.04 for better GLIBC compatibility (2.31 vs 2.35 in ubuntu-latest)
             name: httpc-linux-arm64
 
     runs-on: ${{ matrix.os }}
@@ -110,7 +110,7 @@ jobs:
 
   build-packages:
     needs: build
-    runs-on: ubuntu-18.04  # Use Ubuntu 18.04 for GLIBC 2.27 compatibility with RHEL 8.10
+    runs-on: ubuntu-20.04  # Use Ubuntu 20.04 for better GLIBC compatibility (2.31 vs 2.35 in ubuntu-latest)
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -334,7 +334,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-18.04  # Use Ubuntu 18.04 for GLIBC 2.27 compatibility with RHEL 8.10
+          - os: ubuntu-20.04  # Use Ubuntu 20.04 for better GLIBC compatibility (2.31 vs 2.35 in ubuntu-latest)
             binary: httpc-linux-x64
           - os: macos-latest
             binary: httpc-macos-x64
@@ -367,7 +367,7 @@ jobs:
 
   create-release:
     needs: [build, build-packages, test-binaries]
-    runs-on: ubuntu-18.04  # Use Ubuntu 18.04 for GLIBC 2.27 compatibility with RHEL 8.10
+    runs-on: ubuntu-20.04  # Use Ubuntu 20.04 for better GLIBC compatibility (2.31 vs 2.35 in ubuntu-latest)
     permissions:
       contents: write
     steps:
@@ -612,7 +612,7 @@ jobs:
 
   merge-to-main:
     name: Merge Release to Main
-    runs-on: ubuntu-18.04  # Use Ubuntu 18.04 for GLIBC 2.27 compatibility with RHEL 8.10
+    runs-on: ubuntu-20.04  # Use Ubuntu 20.04 for better GLIBC compatibility (2.31 vs 2.35 in ubuntu-latest)
     needs: [create-release, build, build-packages, test-binaries]
     if: startsWith(github.ref, 'refs/heads/release/')
     steps:
