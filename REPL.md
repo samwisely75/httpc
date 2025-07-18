@@ -77,18 +77,14 @@ The REPL supports multiple vim-like editing modes:
 ## Pane Management
 
 ### Pane Switching
-- **Tab**: Switch between Request and Response panes
-- **Ctrl+W w**: Switch to next pane
-- **Ctrl+W h**: Move to Request pane
-- **Ctrl+W l**: Move to Response pane
-- **Ctrl+W j/k**: Toggle between panes
+- **Ctrl+W w**: Switch to next pane (vim-style)
 
 ### Dynamic Pane Resizing
 The pane boundary can be dynamically adjusted:
 
 #### Boundary Control Keys
 - **Ctrl+K**: Move boundary upward (shrink Request / expand Response)
-- **Ctrl+J**: Move boundary downward (expand Request / shrink Response) 
+- **Ctrl+J**: Move boundary downward (expand Request / shrink Response)
 - **Ctrl+M**: Maximize current pane
 
 #### Constraints
@@ -103,8 +99,6 @@ Compose HTTP requests in the Request pane using this format:
 
 ```
 METHOD URL
-Header-Name: Header-Value
-Another-Header: Value
 
 Request Body (JSON, text, etc.)
 ```
@@ -112,9 +106,8 @@ Request Body (JSON, text, etc.)
 ### Example Request
 ```
 GET https://jsonplaceholder.typicode.com/posts/1
-Accept: application/json
-User-Agent: httpc/1.0
 
+{"title": "foo", "body": "bar", "userId": 1}
 ```
 
 ### Supported Methods
@@ -124,10 +117,7 @@ User-Agent: httpc/1.0
 ## Request Execution
 
 ### Execution Methods
-- **Enter** (Normal mode): Execute HTTP request
 - **Ctrl+Enter** (Insert mode): Execute request without leaving Insert mode
-- **:w** (Command mode): Execute request
-- **:wq** (Command mode): Execute request and quit
 
 ### Response Display
 Responses appear in the Response pane with:
@@ -146,9 +136,7 @@ Responses appear in the Response pane with:
 
 ### Deletion
 - **x**: Delete character at cursor
-- **d**: Delete current line
 - **D**: Delete from cursor to end of line
-- **Backspace**: Delete character before cursor
 
 ### Line Operations
 - **J**: Join current line with next line
@@ -161,7 +149,10 @@ Set session-wide headers using commands:
 ```
 :set Authorization Bearer your-token-here
 :set Content-Type application/json
+:unset Authorization
 ```
+
+Headers are managed exclusively through commands, not in the request pane. Use `:set` to add headers and `:unset` to remove them.
 
 ### Verbose Mode
 Toggle detailed response headers:
@@ -200,14 +191,12 @@ Clear the response pane:
 | `i` | Normal | Enter Insert mode |
 | `Esc` | Insert/Command | Return to Normal mode |
 | `:` | Normal | Enter Command mode |
-| `Tab` | Any | Switch panes |
 | `Ctrl+W w` | Any | Switch panes (vim-style) |
 | `Ctrl+K` | Any | Shrink Input / Expand Output |
 | `Ctrl+J` | Any | Expand Input / Shrink Output |
 | `Ctrl+M` | Any | Maximize current pane |
 | `j/k` | Normal | Move with auto-scroll at boundaries |
 | `Ctrl+U/D` | Normal | Scroll half page |
-| `Enter` | Normal | Execute HTTP request |
 | `Ctrl+Enter` | Insert | Execute HTTP request |
 
 ## Commands Reference
@@ -216,17 +205,15 @@ Clear the response pane:
 |---------|--------|
 | `:q` | Quit application (or hide Response pane if in Response pane) |
 | `:quit` | Same as `:q` |
-| `:w` | Execute HTTP request |
-| `:write` | Same as `:w` |
-| `:wq` | Execute request and quit |
 | `:clear` | Clear response buffer |
 | `:verbose` | Toggle verbose mode |
 | `:set key value` | Set session header |
+| `:unset key` | Remove session header |
 
 ## Tips and Best Practices
 
 1. **Start with GET requests** to test connectivity
-2. **Use session headers** for authentication tokens
+2. **Use `:set` commands for headers** - All headers should be managed via `:set` and `:unset` commands
 3. **Enable verbose mode** to debug header issues
 4. **Use pane resizing** to focus on input or output as needed
 5. **Leverage auto-scrolling** when composing long requests

@@ -563,7 +563,7 @@ impl VimRepl {
         };
         
         let reset_pending_ctrl_w = match key.code {
-            KeyCode::Char('w') | KeyCode::Char('h') | KeyCode::Char('j') | KeyCode::Char('k') | KeyCode::Char('l') => {
+            KeyCode::Char('w') => {
                 // Only reset if we're not in a pending Ctrl+W state
                 !self.pending_ctrl_w
             }
@@ -602,34 +602,6 @@ impl VimRepl {
                     self.pending_ctrl_w = false;
                     return Ok(false);
                 }
-                KeyCode::Char('h') => {
-                    // Ctrl+W h - move to left window (Request pane)
-                    self.current_pane = Pane::Request;
-                    self.status_message = "Switched to request pane".to_string();
-                    self.pending_ctrl_w = false;
-                    return Ok(false);
-                }
-                KeyCode::Char('l') => {
-                    // Ctrl+W l - move to right window (Response pane)
-                    self.current_pane = Pane::Response;
-                    self.status_message = "Switched to response pane".to_string();
-                    self.pending_ctrl_w = false;
-                    return Ok(false);
-                }
-                KeyCode::Char('j') | KeyCode::Char('k') => {
-                    // Ctrl+W j/k - in our case, just toggle between panes
-                    self.current_pane = match self.current_pane {
-                        Pane::Request => Pane::Response,
-                        Pane::Response => Pane::Request,
-                    };
-                    self.status_message = format!("Switched to {} pane", 
-                        match self.current_pane {
-                            Pane::Request => "request",
-                            Pane::Response => "response",
-                        });
-                    self.pending_ctrl_w = false;
-                    return Ok(false);
-                }
                 KeyCode::Esc => {
                     // Cancel Ctrl+W command
                     self.pending_ctrl_w = false;
@@ -652,7 +624,6 @@ impl VimRepl {
                     if self.current_pane == Pane::Request {
                         let half_page = self.get_request_pane_height() / 2;
                         self.buffer.scroll_half_page_up(half_page);
-                        self.status_message = "Scrolled up half page".to_string();
                     } else if self.response_buffer.is_some() {
                         let half_page = self.get_response_pane_height() / 2;
                         if let Some(ref mut response) = self.response_buffer {
@@ -660,7 +631,6 @@ impl VimRepl {
                                 response.scroll_up();
                             }
                         }
-                        self.status_message = "Scrolled up half page".to_string();
                     }
                     return Ok(false);
                 }
@@ -669,7 +639,6 @@ impl VimRepl {
                         let half_page = self.get_request_pane_height() / 2;
                         let max_lines = self.get_request_pane_height();
                         self.buffer.scroll_half_page_down(half_page, max_lines);
-                        self.status_message = "Scrolled down half page".to_string();
                     } else if self.response_buffer.is_some() {
                         let half_page = self.get_response_pane_height() / 2;
                         let max_lines = self.get_response_pane_height();
@@ -678,7 +647,6 @@ impl VimRepl {
                                 response.scroll_down(max_lines);
                             }
                         }
-                        self.status_message = "Scrolled down half page".to_string();
                     }
                     return Ok(false);
                 }
@@ -733,8 +701,6 @@ impl VimRepl {
                     self.status_message = "-- INSERT --".to_string();
                     // Set cursor to line style for insert mode
                     execute!(io::stdout(), SetCursorStyle::BlinkingBar)?;
-                } else {
-                    self.status_message = "Insert mode not allowed in response pane".to_string();
                 }
             }
             KeyCode::Char('I') => {
@@ -744,8 +710,6 @@ impl VimRepl {
                     self.mode = EditorMode::Insert;
                     self.status_message = "-- INSERT --".to_string();
                     execute!(io::stdout(), SetCursorStyle::BlinkingBar)?;
-                } else {
-                    self.status_message = "Insert mode not allowed in response pane".to_string();
                 }
             }
             KeyCode::Char('A') => {
@@ -755,8 +719,6 @@ impl VimRepl {
                     self.mode = EditorMode::Insert;
                     self.status_message = "-- INSERT --".to_string();
                     execute!(io::stdout(), SetCursorStyle::BlinkingBar)?;
-                } else {
-                    self.status_message = "Insert mode not allowed in response pane".to_string();
                 }
             }
             KeyCode::Char(':') => {
@@ -768,7 +730,6 @@ impl VimRepl {
                 // Shift+J - join with next line
                 if self.current_pane == Pane::Request {
                     self.buffer.join_with_next_line();
-                    self.status_message = "Lines joined".to_string();
                 }
             }
             KeyCode::Char('U') => {
@@ -776,7 +737,6 @@ impl VimRepl {
                 if self.current_pane == Pane::Request {
                     let half_page = self.get_request_pane_height() / 2;
                     self.buffer.scroll_half_page_up(half_page);
-                    self.status_message = "Scrolled up half page".to_string();
                 } else if self.response_buffer.is_some() {
                     let half_page = self.get_response_pane_height() / 2;
                     if let Some(ref mut response) = self.response_buffer {
@@ -784,7 +744,6 @@ impl VimRepl {
                             response.scroll_up();
                         }
                     }
-                    self.status_message = "Scrolled up half page".to_string();
                 }
             }
             KeyCode::Char('D') => {
@@ -794,7 +753,6 @@ impl VimRepl {
                         let half_page = self.get_request_pane_height() / 2;
                         let max_lines = self.get_request_pane_height();
                         self.buffer.scroll_half_page_down(half_page, max_lines);
-                        self.status_message = "Scrolled down half page".to_string();
                     } else if self.response_buffer.is_some() {
                         let half_page = self.get_response_pane_height() / 2;
                         let max_lines = self.get_response_pane_height();
@@ -803,7 +761,6 @@ impl VimRepl {
                                 response.scroll_down(max_lines);
                             }
                         }
-                        self.status_message = "Scrolled down half page".to_string();
                     }
                 } else {
                     // Regular D - Delete from cursor to end of line
@@ -811,7 +768,6 @@ impl VimRepl {
                         let deleted = self.buffer.delete_to_line_end();
                         if !deleted.is_empty() {
                             self.clipboard = deleted;
-                            self.status_message = "Deleted to end of line".to_string();
                         }
                     }
                 }
@@ -834,12 +790,10 @@ impl VimRepl {
                     if self.pending_g {
                         // Second 'g' - go to start of buffer
                         self.buffer.move_cursor_to_start();
-                        self.status_message = "Start of buffer".to_string();
                         self.pending_g = false;
                     } else {
                         // First 'g' - wait for second 'g'
                         self.pending_g = true;
-                        self.status_message = "Press 'g' again to go to start of buffer".to_string();
                     }
                 }
             }
@@ -847,7 +801,6 @@ impl VimRepl {
                 // Go to end of buffer
                 if self.current_pane == Pane::Request {
                     self.buffer.move_cursor_to_end();
-                    self.status_message = "End of buffer".to_string();
                 }
             }
             KeyCode::Char('v') => {
@@ -892,7 +845,6 @@ impl VimRepl {
                     if self.buffer.cursor_line == old_cursor_line && self.buffer.cursor_line == self.buffer.lines.len().saturating_sub(1) {
                         let max_lines = self.get_request_pane_height();
                         self.buffer.scroll_down(max_lines);
-                        self.status_message = "Scrolled down one line".to_string();
                     }
                 } else if self.response_buffer.is_some() {
                     let visible_height = self.get_response_pane_height();
@@ -903,7 +855,6 @@ impl VimRepl {
                         // If cursor didn't move (at bottom), scroll down instead
                         if response.cursor_line == old_cursor_line && response.cursor_line == response.lines.len().saturating_sub(1) {
                             response.scroll_down(visible_height);
-                            self.status_message = "Scrolled down one line".to_string();
                         } else {
                             // Auto-scroll down if cursor goes below visible area
                             if response.cursor_line >= response.scroll_offset + visible_height {
@@ -921,7 +872,6 @@ impl VimRepl {
                     // If cursor didn't move (at top), scroll up instead
                     if self.buffer.cursor_line == old_cursor_line && self.buffer.cursor_line == 0 {
                         self.buffer.scroll_up();
-                        self.status_message = "Scrolled up one line".to_string();
                     }
                 } else if self.response_buffer.is_some() {
                     if let Some(ref mut response) = self.response_buffer {
@@ -931,7 +881,6 @@ impl VimRepl {
                         // If cursor didn't move (at top), scroll up instead
                         if response.cursor_line == old_cursor_line && response.cursor_line == 0 {
                             response.scroll_up();
-                            self.status_message = "Scrolled up one line".to_string();
                         }
                     }
                 }
@@ -943,32 +892,14 @@ impl VimRepl {
                     response.move_cursor_right();
                 }
             }
-            KeyCode::Tab => {
-                self.current_pane = match self.current_pane {
-                    Pane::Request => Pane::Response,
-                    Pane::Response => Pane::Request,
-                };
-                self.status_message = format!("Switched to {} pane", 
-                    match self.current_pane {
-                        Pane::Request => "request",
-                        Pane::Response => "response",
-                    });
-            }
-            KeyCode::Enter => {
-                if self.current_pane == Pane::Request {
-                    self.execute_request().await?;
-                }
-            }
             KeyCode::Char('y') => {
                 // Start yank operation - for now just yank current line
                 if self.current_pane == Pane::Request {
                     self.clipboard = self.buffer.yank_line();
-                    self.status_message = "Line yanked".to_string();
                 } else if let Some(ref response) = self.response_buffer {
                     let line_idx = response.scroll_offset;
                     if let Some(line) = response.lines.get(line_idx) {
                         self.clipboard = line.clone();
-                        self.status_message = "Line yanked from response".to_string();
                     }
                 }
             }
@@ -976,42 +907,27 @@ impl VimRepl {
                 // Yank from cursor to end of line
                 if self.current_pane == Pane::Request {
                     self.clipboard = self.buffer.yank_to_line_end();
-                    self.status_message = "Yanked to end of line".to_string();
                 }
             }
             KeyCode::Char('p') => {
                 if self.current_pane == Pane::Request && !self.clipboard.is_empty() {
                     self.buffer.paste_line(&self.clipboard);
-                    self.status_message = "Line pasted".to_string();
                 }
             }
             KeyCode::Char('P') => {
                 // Paste above current line
                 if self.current_pane == Pane::Request && !self.clipboard.is_empty() {
                     self.buffer.paste_line_above(&self.clipboard);
-                    self.status_message = "Line pasted above".to_string();
-                }
-            }
-            KeyCode::Char('d') => {
-                if self.current_pane == Pane::Request {
-                    self.clipboard = self.buffer.delete_line();
-                    self.status_message = "Line deleted".to_string();
                 }
             }
             KeyCode::Char('x') => {
                 if self.current_pane == Pane::Request {
                     self.buffer.delete_char_at_cursor();
-                    self.status_message = "Character deleted".to_string();
                 }
             }
             KeyCode::Delete => {
                 if self.current_pane == Pane::Request {
                     self.buffer.delete_char_at_cursor();
-                }
-            }
-            KeyCode::Backspace => {
-                if self.current_pane == Pane::Request {
-                    self.buffer.delete_char();
                 }
             }
             KeyCode::Esc => {
@@ -1021,13 +937,11 @@ impl VimRepl {
                 if self.current_pane == Pane::Request {
                     let half_page = self.get_request_pane_height() / 2;
                     self.buffer.scroll_half_page_up(half_page);
-                    self.status_message = "Scrolled up".to_string();
                 } else if self.response_buffer.is_some() {
                     let half_page = self.get_response_pane_height() / 2;
                     if let Some(ref mut response) = self.response_buffer {
                         response.scroll_half_page_up(half_page);
                     }
-                    self.status_message = "Scrolled up".to_string();
                 }
             }
             KeyCode::PageDown => {
@@ -1035,14 +949,12 @@ impl VimRepl {
                     let half_page = self.get_request_pane_height() / 2;
                     let max_lines = self.get_request_pane_height();
                     self.buffer.scroll_half_page_down(half_page, max_lines);
-                    self.status_message = "Scrolled down".to_string();
                 } else if self.response_buffer.is_some() {
                     let half_page = self.get_response_pane_height() / 2;
                     let max_lines = self.get_response_pane_height();
                     if let Some(ref mut response) = self.response_buffer {
                         response.scroll_half_page_down(half_page, max_lines);
                     }
-                    self.status_message = "Scrolled down".to_string();
                 }
             }
             _ => {}
@@ -1232,7 +1144,6 @@ impl VimRepl {
                 if let Some(ref selection) = self.visual_selection {
                     let yanked_text = self.get_selected_text(selection);
                     self.clipboard = yanked_text;
-                    self.status_message = "Selection yanked".to_string();
                 }
                 self.mode = EditorMode::Normal;
                 self.visual_selection = None;
@@ -1242,7 +1153,6 @@ impl VimRepl {
                 if let Some(selection) = self.visual_selection.take() {
                     let deleted_text = self.delete_selected_text(&selection);
                     self.clipboard = deleted_text;
-                    self.status_message = "Selection deleted".to_string();
                 }
                 self.mode = EditorMode::Normal;
             }
@@ -1379,13 +1289,6 @@ impl VimRepl {
                     return Ok(true);
                 }
             }
-            "w" | "write" => {
-                self.execute_request().await?;
-            }
-            "wq" => {
-                self.execute_request().await?;
-                return Ok(true);
-            }
             "clear" => {
                 self.response_buffer = None;
                 self.status_message = "Response cleared".to_string();
@@ -1402,6 +1305,16 @@ impl VimRepl {
                         let value = parts[2].to_string();
                         self.session_headers.insert(key.clone(), value.clone());
                         self.status_message = format!("Header set: {} = {}", key, value);
+                    }
+                } else if self.command_buffer.starts_with("unset ") {
+                    let parts: Vec<&str> = self.command_buffer.splitn(2, ' ').collect();
+                    if parts.len() >= 2 {
+                        let key = parts[1].to_string();
+                        if self.session_headers.remove(&key).is_some() {
+                            self.status_message = format!("Header removed: {}", key);
+                        } else {
+                            self.status_message = format!("Header not found: {}", key);
+                        }
                     }
                 } else {
                     self.status_message = format!("Unknown command: {}", self.command_buffer);
@@ -1431,9 +1344,10 @@ impl VimRepl {
         let url_str = parts[1];
         let url = Url::parse(url_str);
         
-        // Rest of the lines become the body
-        let body = if lines.len() > 1 {
-            Some(lines[1..].join("\n"))
+        // Skip empty line after URL if it exists, then rest becomes the body
+        let body_start_idx = if lines.len() > 1 && lines[1].trim().is_empty() { 2 } else { 1 };
+        let body = if lines.len() > body_start_idx {
+            Some(lines[body_start_idx..].join("\n"))
         } else {
             None
         };
@@ -1743,7 +1657,6 @@ impl VimRepl {
         if current_input_height < max_input_height {
             let new_input_height = (current_input_height + 1).min(max_input_height);
             self.pane_split_ratio = new_input_height as f64 / total_content_height as f64;
-            self.status_message = format!("Input pane expanded to {} lines", new_input_height);
         }
     }
 
@@ -1758,7 +1671,6 @@ impl VimRepl {
             let new_output_height = (current_output_height + 1).min(max_output_height);
             let new_input_height = total_content_height - new_output_height;
             self.pane_split_ratio = new_input_height as f64 / total_content_height as f64;
-            self.status_message = format!("Output pane expanded to {} lines", new_output_height);
         }
     }
 
@@ -1796,17 +1708,14 @@ impl VimRepl {
         let max_input_height = total_content_height - min_output_height;
         
         self.pane_split_ratio = max_input_height as f64 / total_content_height as f64;
-        self.status_message = format!("Input pane maximized to {} lines", max_input_height);
     }
 
     fn maximize_output_pane(&mut self) {
         let height = self.terminal_size.1 as usize;
         let total_content_height = height - 2; // Minus separator and status line
         let min_input_height = 3;
-        let max_output_height = total_content_height - min_input_height;
         
         self.pane_split_ratio = min_input_height as f64 / total_content_height as f64;
-        self.status_message = format!("Output pane maximized to {} lines", max_output_height);
     }
 }
 

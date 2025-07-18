@@ -9,15 +9,15 @@ This project is a Rust-based HTTP client named `httpc`, previously known as `web
 
 ## REPL mode
 
-### Input / Output Pane
+### Request / Response Pane
 
 The project includes a REPL (Read-Eval-Print Loop) mode that allows users to interactively test HTTP requests. This mode is designed to be user-friendly and supports various HTTP methods, headers, and body content.
 
-Since we are using terminal UI, I will split the terminal to two logical panes: Input and Output. The Input pane is where users can type their HTTP requests, and the Output pane displays the results of those requests. The Like the vi's multiple windows mode, user can switch between the Input and Output panes using keyboard shortcuts and navigate though the content by moving the cursor. 
+Since we are using terminal UI, I will split the terminal to two logical panes: Request and Response. The Request pane is where users can type their HTTP requests, and the Response pane displays the results of those requests. The Like the vi's multiple windows mode, user can switch between the Request and Response panes using keyboard shortcuts and navigate though the content by moving the cursor. 
 
-The Input pane supports syntax highlighting for HTTP methods, headers, and body content, making it easier to read and write requests.
+The Request pane supports syntax highlighting for HTTP methods, headers, and body content, making it easier to read and write requests.
 
-Both panes support basic vi commands (discussed below) for navigation and editing, allowing users to use familiar commands to interact with the REPL. The Output pane is for read-only; users cannot edit the output.
+Both panes support basic vi commands (discussed below) for navigation and editing, allowing users to use familiar commands to interact with the REPL. The Response pane is for read-only; users cannot edit the output.
 
 Think the app has two buffers simultaneously.
 
