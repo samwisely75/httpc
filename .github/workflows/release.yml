@@ -551,8 +551,14 @@ jobs:
           VERSION=${{ steps.extract_version.outputs.version }}
           TAG="v${VERSION}"
           
-          # Calculate SHA256 from the release tarball
-          SHA256=$(curl -L https://github.com/samwisely75/httpc/archive/refs/tags/${TAG}.tar.gz | sha256sum | cut -d ' ' -f 1)
+          # Calculate SHA256 values for the binaries (use shasum on macOS)
+          echo "Calculating SHA256 for macOS ARM64..."
+          ARM64_SHA256=$(curl -sSL https://github.com/samwisely75/httpc/releases/download/${TAG}/httpc-macos-arm64 | shasum -a 256 | cut -d ' ' -f 1)
+          echo "ARM64 SHA256: $ARM64_SHA256"
+          
+          echo "Calculating SHA256 for macOS Intel..."
+          INTEL_SHA256=$(curl -sSL https://github.com/samwisely75/httpc/releases/download/${TAG}/httpc-macos-x64 | shasum -a 256 | cut -d ' ' -f 1)
+          echo "Intel SHA256: $INTEL_SHA256"
           
           # Create or update the formula
           cat > Formula/httpc.rb << EOF
@@ -560,16 +566,16 @@ jobs:
             desc "A flexible HTTP client with profile support"
             homepage "https://github.com/samwisely75/httpc"
             version "${VERSION}"
-            license "MIT"
+            license "Elastic-2.0"
 
             on_macos do
               on_arm do
                 url "https://github.com/samwisely75/httpc/releases/download/${TAG}/httpc-macos-arm64"
-                sha256 "$(curl -L https://github.com/samwisely75/httpc/releases/download/${TAG}/httpc-macos-arm64 | sha256sum | cut -d ' ' -f 1)"
+                sha256 "${ARM64_SHA256}"
               end
               on_intel do
                 url "https://github.com/samwisely75/httpc/releases/download/${TAG}/httpc-macos-x64"
-                sha256 "$(curl -L https://github.com/samwisely75/httpc/releases/download/${TAG}/httpc-macos-x64 | sha256sum | cut -d ' ' -f 1)"
+                sha256 "${INTEL_SHA256}"
               end
             end
           
@@ -582,6 +588,13 @@ jobs:
             end
           end
           EOF
+          
+          # Commit and push the changes
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/httpc.rb
+          git commit -m "httpc ${VERSION}"
+          git push
           
           # Commit and push the changes
           git config user.name "github-actions[bot]"
