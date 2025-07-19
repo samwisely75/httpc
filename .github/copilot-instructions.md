@@ -44,3 +44,5 @@ The app supports Vi-style commands for navigation and editing within the REPL mo
 8. **Continuous Integration**: Use CI/CD pipelines to automate testing and deployment processes.
 
 9. Run cargo clippy and cargo fmt before submitting pull requests to ensure code quality and consistency.
+
+10. **Commenting**: Always write the OBJECTIVE of the code and WHY it's implemented in the way it is. Use comments to explain the big picture and the reasoning behind complex logic, instead of explaining what it does in every single line. I.e., write the explanation you give me in the prompt answers in the comments because I always forget them. WHAT it does should be clear from the code itself; the function and variable names should be descriptive enough. Do not use shiny words or phrases like "sophisticated", "advanced", and "smart" etc., just write the facts. And always assume the reader has no prior knowledge of the code nor the libraries being used. Use `//!` for module-level documentation and `///` for function-level documentation.
