@@ -594,6 +594,32 @@ impl ResponseBuffer {
         }
     }
 
+    fn move_cursor_down_with_scroll(&mut self, visible_height: usize) {
+        if self.cursor_line < self.lines.len().saturating_sub(1) {
+            self.cursor_line += 1;
+            let line_len = self.lines.get(self.cursor_line).map_or(0, |l| l.len());
+            self.cursor_col = self.cursor_col.min(line_len);
+            
+            // Auto-scroll down if cursor goes below visible area
+            if self.cursor_line >= self.scroll_offset + visible_height {
+                self.scroll_offset = self.cursor_line - visible_height + 1;
+            }
+        }
+    }
+
+    fn move_cursor_up_with_scroll(&mut self) {
+        if self.cursor_line > 0 {
+            self.cursor_line -= 1;
+            let line_len = self.lines.get(self.cursor_line).map_or(0, |l| l.len());
+            self.cursor_col = self.cursor_col.min(line_len);
+            
+            // Auto-scroll up if cursor goes above visible area
+            if self.cursor_line < self.scroll_offset {
+                self.scroll_offset = self.cursor_line;
+            }
+        }
+    }
+
     fn move_cursor_left(&mut self) {
         if self.cursor_col > 0 {
             self.cursor_col -= 1;
@@ -868,13 +894,13 @@ impl VimRepl {
 
     /// Main event processing loop with rendering optimization.
     /// 
-    /// OBJECTIVE: Eliminate terminal flicker by using the minimal rendering strategy
+    /// Eliminate terminal flicker by using the minimal rendering strategy
     /// for each type of user interaction. Terminal flicker occurs when we redraw
     /// content unnecessarily, causing visual artifacts and poor user experience.
     /// 
-    /// WHY THIS APPROACH: Traditional terminal applications often use a single
-    /// "redraw everything" approach, but for a vim-style dual-pane interface,
-    /// this causes severe flicker. We implement a three-tier rendering system:
+    /// Traditional terminal applications often use a single "redraw everything" 
+    /// approach, but for a vim-style dual-pane interface, this causes severe flicker. 
+    /// We implement a three-tier rendering system:
     /// 
     /// 1. Pure cursor movement (render) - Just position cursor, no screen writes
     /// 2. Content updates (render_pane_update) - Update only the changed pane
@@ -890,11 +916,40 @@ impl VimRepl {
                 Event::Key(key) => {
                     let old_mode = self.mode.clone();
                     let old_pane = self.current_pane.clone();
+                    
+                    // Capture scroll state before handling the key event
+                    // Detect when movement commands cause scrolling because movement commands 
+                    // (hjkl, arrow keys) can trigger scrolling when the cursor moves beyond the 
+                    // visible area. Without this detection, these would be treated as "pure cursor 
+                    // movement" which would cause content to not refresh properly when scrolling occurred.
+                    let old_request_scroll = self.buffer.scroll_offset;
+                    let old_response_scroll = self.response_buffer.as_ref().map(|r| r.scroll_offset);
+                    
+                    // Capture pane split ratio before handling the key event
+                    // Detect when pane boundary control commands (Ctrl+J/Ctrl+K) change layout
+                    // because pane boundary changes affect both panes' dimensions and require full 
+                    // redraw, but without this the rendering decision logic wouldn't detect these 
+                    // layout changes.
+                    let old_pane_split_ratio = self.pane_split_ratio;
+                    
                     let needs_exit = self.handle_key_event(key).await?;
                     
                     if needs_exit {
                         break;
                     }
+                    
+                    // Check if scrolling occurred during the key event
+                    // When movement commands (hjkl, arrows) cause the cursor to move
+                    // beyond the visible area, the scroll-aware movement methods automatically
+                    // adjust the scroll_offset. We detect this change to trigger proper rendering.
+                    let scroll_occurred = self.buffer.scroll_offset != old_request_scroll ||
+                        self.response_buffer.as_ref().map(|r| r.scroll_offset) != old_response_scroll;
+                    
+                    // Check if pane layout changed during the key event  
+                    // Pane boundary controls (Ctrl+J/Ctrl+K) modify the pane_split_ratio,
+                    // changing both panes' dimensions. This requires a full redraw since both
+                    // panes' content positioning and the separator location change.
+                    let pane_layout_changed = self.pane_split_ratio != old_pane_split_ratio;
                     
                     // RENDERING DECISION LOGIC
                     // ======================
@@ -909,6 +964,8 @@ impl VimRepl {
                         self.mode == EditorMode::Command ||         // Command mode (bottom status line changes constantly)
                         self.mode == EditorMode::Visual ||          // Visual mode (requires selection highlighting)
                         self.mode == EditorMode::VisualLine ||      // Visual line mode (requires line highlighting)
+                        scroll_occurred ||                          // Movement caused scrolling (content repositions)
+                        pane_layout_changed ||                      // Pane boundary changed (layout repositions)
                         (key.modifiers.contains(KeyModifiers::CONTROL) && 
                          matches!(key.code, KeyCode::Char('u') | KeyCode::Char('d') | KeyCode::Char('f') | KeyCode::Char('b') | KeyCode::Char('g'))) || // Scrolling commands (content repositions)
                         matches!(key.code, KeyCode::PageUp | KeyCode::PageDown); // Page scrolling (major content changes)
@@ -1315,50 +1372,21 @@ impl VimRepl {
             }
             KeyCode::Char('j') | KeyCode::Down => {
                 if self.current_pane == Pane::Request {
-                    let old_cursor_line = self.buffer.cursor_line;
-                    self.buffer.move_cursor_down();
-                    
-                    // If cursor didn't move (at bottom), scroll down instead
-                    if self.buffer.cursor_line == old_cursor_line && self.buffer.cursor_line == self.buffer.lines.len().saturating_sub(1) {
-                        let max_lines = self.get_request_pane_height();
-                        self.buffer.scroll_down(max_lines);
-                    }
+                    let visible_height = self.get_request_pane_height();
+                    self.buffer.move_cursor_down_with_scroll(visible_height);
                 } else if self.response_buffer.is_some() {
                     let visible_height = self.get_response_pane_height();
                     if let Some(ref mut response) = self.response_buffer {
-                        let old_cursor_line = response.cursor_line;
-                        response.move_cursor_down();
-                        
-                        // If cursor didn't move (at bottom), scroll down instead
-                        if response.cursor_line == old_cursor_line && response.cursor_line == response.lines.len().saturating_sub(1) {
-                            response.scroll_down(visible_height);
-                        } else {
-                            // Auto-scroll down if cursor goes below visible area
-                            if response.cursor_line >= response.scroll_offset + visible_height {
-                                response.scroll_offset = response.cursor_line - visible_height + 1;
-                            }
-                        }
+                        response.move_cursor_down_with_scroll(visible_height);
                     }
                 }
             }
             KeyCode::Char('k') | KeyCode::Up => {
                 if self.current_pane == Pane::Request {
-                    let old_cursor_line = self.buffer.cursor_line;
-                    self.buffer.move_cursor_up();
-                    
-                    // If cursor didn't move (at top), scroll up instead
-                    if self.buffer.cursor_line == old_cursor_line && self.buffer.cursor_line == 0 {
-                        self.buffer.scroll_up();
-                    }
+                    self.buffer.move_cursor_up_with_scroll();
                 } else if self.response_buffer.is_some() {
                     if let Some(ref mut response) = self.response_buffer {
-                        let old_cursor_line = response.cursor_line;
-                        response.move_cursor_up();
-                        
-                        // If cursor didn't move (at top), scroll up instead
-                        if response.cursor_line == old_cursor_line && response.cursor_line == 0 {
-                            response.scroll_up();
-                        }
+                        response.move_cursor_up_with_scroll();
                     }
                 }
             }
@@ -2015,12 +2043,11 @@ impl VimRepl {
 
     /// TIER 1: Pure cursor movement rendering (fastest, zero flicker)
     /// 
-    /// OBJECTIVE: Position cursor with minimal terminal I/O for navigation commands.
-    /// 
-    /// WHY THIS APPROACH: When users press hjkl, arrow keys, or movement commands
-    /// like w/b/0/$, only the cursor position changes - no content modification.
-    /// We use a single ANSI escape sequence to move the cursor directly without
-    /// any screen clearing or content redrawing.
+    /// Position cursor with minimal terminal I/O for navigation commands.
+    /// When users press hjkl, arrow keys, or movement commands like w/b/0/$, 
+    /// only the cursor position changes - no content modification. We use a single 
+    /// ANSI escape sequence to move the cursor directly. Without this approach, 
+    /// we'd need screen clearing or content redrawing which causes flicker.
     /// 
     /// WHEN USED: Pure navigation in Normal mode (hjkl, arrow keys, w/b, 0/$, gg/G)
     /// PERFORMANCE: ~0.1ms - Single escape sequence, no buffering overhead
@@ -2066,17 +2093,16 @@ impl VimRepl {
 
     /// TIER 3: Full screen rendering (most expensive, used sparingly)
     /// 
-    /// OBJECTIVE: Complete UI redraw when layout, modes, or multiple panes change.
-    /// 
-    /// WHY THIS APPROACH: Some operations require redrawing the entire interface:
+    /// Complete UI redraw when layout, modes, or multiple panes change.
+    /// Some operations require redrawing the entire interface:
     /// - Mode changes (affects status line, cursor style, visual highlighting)
     /// - Pane switching (focus indicators, cursor visibility)
     /// - Scrolling operations (content repositions in visible area)
     /// - Visual mode (selection highlighting across content)
     /// 
     /// We use a single-buffer strategy: collect all output in memory, then
-    /// write everything at once to minimize the window where partial content
-    /// is visible (which causes flicker).
+    /// write everything at once. Without this approach, partial content would
+    /// be visible during the redraw which causes flicker.
     /// 
     /// WHEN USED: Mode changes, pane switching, scrolling, visual selections
     /// PERFORMANCE: ~2-5ms - Full UI redraw with buffering
@@ -2136,11 +2162,10 @@ impl VimRepl {
 
     /// TIER 2: Single pane content update (moderate cost, efficient)
     /// 
-    /// OBJECTIVE: Update only the pane where content changed, leaving other pane untouched.
-    /// 
-    /// WHY THIS APPROACH: The key insight is that when typing in the Request pane,
-    /// the Response pane content is completely static and doesn't need redrawing.
-    /// Traditional approaches redraw both panes, causing flicker in the Response pane.
+    /// Update only the pane where content changed, leaving other pane untouched.
+    /// The key insight is that when typing in the Request pane, the Response pane 
+    /// content is completely static and doesn't need redrawing. Without this approach,
+    /// traditional methods would redraw both panes, causing flicker in the Response pane.
     /// 
     /// By isolating updates to only the active pane, we eliminate cross-pane flicker
     /// while still updating the modified content area efficiently.
@@ -2232,12 +2257,13 @@ impl VimRepl {
     // BUFFER-BASED RENDERING SYSTEM
     // ========================================================================
     // 
-    // OBJECTIVE: Eliminate terminal flicker through atomic screen updates.
+    // Eliminate terminal flicker through atomic screen updates.
     // 
-    // WHY BUFFER-BASED: Direct terminal writes (print! statements) can create
-    // visual artifacts when the user sees partial screen states. By collecting
-    // all output in a String buffer first, we ensure the terminal sees only
-    // complete, consistent screen states.
+    // Direct terminal writes (print! statements) can create visual artifacts 
+    // when the user sees partial screen states. By collecting all output in a 
+    // String buffer first, we ensure the terminal sees only complete, consistent 
+    // screen states. Without this buffering approach, users would see incomplete 
+    // or inconsistent screen updates during rendering.
     // 
     // PATTERN: Each *_to_buffer method appends its output to a shared buffer.
     // The caller then writes the entire buffer atomically with a single print!
@@ -2526,8 +2552,6 @@ impl VimRepl {
 
     fn render_status_line(&self, row: usize, width: usize) -> Result<()> {
         execute!(io::stdout(), cursor::MoveTo(0, row as u16))?;
-        execute!(io::stdout(), SetBackgroundColor(Color::DarkBlue))?;
-        execute!(io::stdout(), SetForegroundColor(Color::White))?;
         
         // Handle command mode display
         let left_content = if self.mode == EditorMode::Command {
@@ -2573,7 +2597,6 @@ impl VimRepl {
         };
         
         print!("{}", final_status);
-        execute!(io::stdout(), ResetColor)?;
         
         Ok(())
     }
@@ -2581,9 +2604,6 @@ impl VimRepl {
     fn render_status_line_to_buffer(&self, buffer: &mut String, row: usize, width: usize) {
         // Move to status line position and clear it
         buffer.push_str(&format!("\x1b[{};1H\x1b[2K", row + 1));
-        
-        // Set background and foreground colors
-        buffer.push_str("\x1b[44m\x1b[37m"); // Dark blue bg, white fg
         
         // Handle command mode display
         let left_content = if self.mode == EditorMode::Command {
@@ -2629,7 +2649,6 @@ impl VimRepl {
         };
         
         buffer.push_str(&final_status);
-        buffer.push_str("\x1b[0m"); // Reset colors
     }
 
     fn get_response_pane_height(&self) -> usize {
@@ -2654,7 +2673,12 @@ impl VimRepl {
         
         if current_input_height < max_input_height {
             let new_input_height = (current_input_height + 1).min(max_input_height);
-            self.pane_split_ratio = new_input_height as f64 / total_content_height as f64;
+            // Ensure precise ratio calculation for consistent pane boundaries to prevent
+            // floating-point precision errors that would cause inconsistent pane sizes
+            // when expanding to maximum bounds.
+            let target_ratio = new_input_height as f64 / total_content_height as f64;
+            let max_ratio = max_input_height as f64 / total_content_height as f64;
+            self.pane_split_ratio = target_ratio.min(max_ratio);
         }
     }
 
@@ -2668,7 +2692,12 @@ impl VimRepl {
         if current_output_height < max_output_height {
             let new_output_height = (current_output_height + 1).min(max_output_height);
             let new_input_height = total_content_height - new_output_height;
-            self.pane_split_ratio = new_input_height as f64 / total_content_height as f64;
+            // Maintain precise ratio calculation when expanding output pane to ensure
+            // consistent behavior with input pane resizing and prevent boundary precision
+            // issues that would cause the pane to not reach maximum output pane size.
+            let target_ratio = new_input_height as f64 / total_content_height as f64;
+            let min_ratio = min_input_height as f64 / total_content_height as f64;
+            self.pane_split_ratio = target_ratio.max(min_ratio);
         }
     }
 
@@ -2680,7 +2709,13 @@ impl VimRepl {
         
         if current_input_height > min_input_height {
             let new_input_height = (current_input_height - 1).max(min_input_height);
-            self.pane_split_ratio = new_input_height as f64 / total_content_height as f64;
+            // Ensure precise ratio calculation to avoid floating-point precision issues
+            // that would cause the pane to get stuck at values like 4 lines instead of
+            // reaching the exact minimum of 3 lines. We calculate the exact ratio and
+            // clamp it to ensure boundaries are respected.
+            let target_ratio = new_input_height as f64 / total_content_height as f64;
+            let min_ratio = min_input_height as f64 / total_content_height as f64;
+            self.pane_split_ratio = target_ratio.max(min_ratio);
         }
     }
 
@@ -2693,7 +2728,12 @@ impl VimRepl {
         if current_output_height > min_output_height {
             let new_output_height = (current_output_height - 1).max(min_output_height);
             let new_input_height = total_content_height - new_output_height;
-            self.pane_split_ratio = new_input_height as f64 / total_content_height as f64;
+            // Ensure precise ratio calculation when shrinking output pane to prevent
+            // the output pane from getting stuck above the minimum size due to
+            // floating-point precision errors in ratio calculations.
+            let target_ratio = new_input_height as f64 / total_content_height as f64;
+            let max_ratio = (total_content_height - min_output_height) as f64 / total_content_height as f64;
+            self.pane_split_ratio = target_ratio.min(max_ratio);
         }
     }
 
